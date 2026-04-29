@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.44'
-const TENALI_BUILD_DATE = '2026-04-29 12:13 IST'
+const TENALI_VERSION = '1.0.45'
+const TENALI_BUILD_DATE = '2026-04-29 12:42 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -15043,7 +15043,7 @@ const CUSTOM_PUZZLES = [
  * Different puzzle types use different API endpoints with varying parameter styles
  * Returns: Promise<question object from backend>
  */
-function fetchQuestionForType(type, difficulty) {
+function fetchQuestionForType(type, difficulty, qIndex = 0) {
   // Map difficulty levels to numeric step values for some puzzle types
   const diffMap = { easy: 1, medium: 2, hard: 3 }
   const urls = {
@@ -15107,7 +15107,7 @@ function fetchQuestionForType(type, difficulty) {
     angles: `${API}/angles-api/question?difficulty=${difficulty}`,
     triangles: `${API}/triangles-api/question?difficulty=${difficulty}`,
     congruence: `${API}/congruence-api/question?difficulty=${difficulty}`,
-    pythag: `${API}/pythag-api/question?difficulty=${difficulty}`,
+    pythag: `${API}/pythag-api/question?difficulty=${difficulty}&q=${qIndex}`,
     polygons: `${API}/polygons-api/question?difficulty=${difficulty}`,
     similarity: `${API}/similarity-api/question?difficulty=${difficulty}`,
     squaring: `${API}/squaring-api/question?difficulty=${difficulty}`,
@@ -15339,7 +15339,7 @@ function CustomApp({ onBack }) {
     setCurType(type)
     try {
       // Fetch question from type-specific API endpoint
-      const data = await fetchQuestionForType(type, difficulty)
+      const data = await fetchQuestionForType(type, difficulty, qIndex)
       if (data && !data.error) {
         setQuestion(data)
         // Initialize type-specific input: polymul needs coefficient array

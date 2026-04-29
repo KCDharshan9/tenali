@@ -6104,22 +6104,47 @@ app.post('/congruence-api/check', express.json(), (req, res) => {
 
 const PYTH_TRIPLES = [[3,4,5],[5,12,13],[8,15,17],[7,24,25],[6,8,10],[9,12,15],[12,16,20],[15,20,25],[9,40,41],[11,60,61],[20,21,29]];
 
+/**
+ * Module 44 spec: a Pythagoras session must never open with large numbers.
+ * Sessions always begin with very small (single-digit) side lengths and
+ * progress gradually to double-digit values. Squaring big numbers up-front
+ * creates an unnecessary calculation burden and loses the student early.
+ *
+ * Tier selection is driven by the optional `?q=` query param (zero-based
+ * index of the question within the session). Lower indices select smaller
+ * triples; higher indices unlock the full pool. If the client doesn't pass
+ * `q`, we default to 0 (smallest tier) — never to "anything goes".
+ */
+function pythagPoolForIndex(qIdx) {
+  // Tier 0 (questions 1-3): single-digit sides only — only the (3,4,5) triple.
+  if (qIdx < 3) return { triples: [[3,4,5]], maxK: 1 };
+  // Tier 1 (questions 4-6): small double-digit sides, k=1.
+  if (qIdx < 6) return { triples: [[3,4,5],[6,8,10],[5,12,13],[9,12,15]], maxK: 1 };
+  // Tier 2 (questions 7-9): broader pool, allow k=2.
+  if (qIdx < 9) return { triples: [[3,4,5],[6,8,10],[5,12,13],[9,12,15],[8,15,17],[7,24,25]], maxK: 2 };
+  // Tier 3 (10+): full pool, larger multipliers permitted.
+  return { triples: PYTH_TRIPLES.slice(0, 6), maxK: 3 };
+}
+
 app.get('/pythag-api/question', (req, res) => {
   const diff = req.query.difficulty || 'easy';
+  const qIdx = Math.max(0, parseInt(req.query.q, 10) || 0);
   let prompt, answer, display;
 
   if (diff === 'easy') {
-    // Find hypotenuse given two legs
-    const t = PYTH_TRIPLES[randInt(0, 5)];
-    const k = randInt(1, 3);
+    // Find hypotenuse given two legs — gradual size progression
+    const pool = pythagPoolForIndex(qIdx);
+    const t = pool.triples[randInt(0, pool.triples.length - 1)];
+    const k = randInt(1, pool.maxK);
     const a = t[0] * k, b = t[1] * k, c = t[2] * k;
     answer = c;
     display = answer + ' cm';
     prompt = `A right-angled triangle has legs ${a} cm and ${b} cm. Find the hypotenuse.`;
   } else if (diff === 'medium') {
-    // Find a leg given hypotenuse and one leg
-    const t = PYTH_TRIPLES[randInt(0, 5)];
-    const k = randInt(1, 3);
+    // Find a leg given hypotenuse and one leg — also tiered by question index
+    const pool = pythagPoolForIndex(qIdx);
+    const t = pool.triples[randInt(0, pool.triples.length - 1)];
+    const k = randInt(1, pool.maxK);
     const a = t[0] * k, b = t[1] * k, c = t[2] * k;
     const pick = randInt(0, 1);
     if (pick === 0) {
