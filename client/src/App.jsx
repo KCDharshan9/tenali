@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.51'
-const TENALI_BUILD_DATE = '2026-04-30 07:54 IST'
+const TENALI_VERSION = '1.0.52'
+const TENALI_BUILD_DATE = '2026-04-30 07:58 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -8641,7 +8641,7 @@ function makeMCQuizApp({ title, subtitle, apiPath, diffLabels, tip, adaptiveOnly
           </div>
           {question && <div style={{ textAlign: 'center' }}>
             <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '8px 0 4px', lineHeight: '1.4' }}>{question.prompt}</div>
-            <div className="options-grid" style={{ marginTop: '4px' }}>
+            <div className="options-grid" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: '12px', marginTop: '40px' }}>
               {question.options.map(opt => {
                 const isSelected = selectedOption === opt.option
                 const isCorrectOpt = revealed && correctOption === opt.option
@@ -9920,7 +9920,7 @@ function GymApp({ onBack }) {
         </div>
         {question && <div style={{ textAlign: 'center' }}>
           <div className="question-prompt" style={{ fontSize: '1.3rem', margin: '8px 0 4px', lineHeight: '1.4' }}>{question.prompt}</div>
-          <div className="options-grid" style={{ marginTop: '4px' }}>
+          <div className="options-grid" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: '12px', marginTop: '40px' }}>
             {question.options.map(opt => {
               const isSelected = selectedOption === opt.option
               const isCorrectOpt = revealed && correctOption === opt.option
