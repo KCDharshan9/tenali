@@ -21,15 +21,15 @@
  * Progress persistence: Adaptive tables app saves current table progress in localStorage
  */
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import './App.css'
 
 // API base URL from environment variables (Vite)
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.67'
-const TENALI_BUILD_DATE = '2026-05-01 10:37 IST'
+const TENALI_VERSION = '1.0.68'
+const TENALI_BUILD_DATE = '2026-05-01 10:52 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -5188,240 +5188,269 @@ function SuperTablesApp() {
 
 /* =====================================================================
  *  Chapter5App — Cambridge IGCSE Chapter 5 (Fractions, Percentages, Standard Form)
- *  Adaptive, lesson-by-lesson coverage of every micro-skill in the chapter.
- *  Mounted at /chapter5
+ *
+ *  Mounted at /chapter5. An ordered chain of micro-lessons. Each lesson opens
+ *  with a teach panel (rule + worked example), then walks the student through
+ *  a question stream that ramps from easy warm-ups into the actual chapter
+ *  exercise items, including the multi-step word problems.
+ *
+ *  Most questions are multiple choice (numbered 1-N, keyboard 1..9 selects).
+ *  Some are fill-in-the-blank (numeric, fraction, or standard form). Fractions
+ *  and exponents render in LaTeX-style typography via renderMath / MathFrac
+ *  (see further down in this file — function declarations are hoisted).
  * ===================================================================== */
 
-// --- Fraction helpers -----------------------------------------------------
+const CH5_OPTION_LABEL = ['1','2','3','4','5','6','7','8','9']
+
+// --- Stable shuffle keyed off question identity (no jitter on re-render) ---
+function ch5_seededShuffle(n, key) {
+  let h = 2166136261
+  for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619) }
+  const rand = () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967295 }
+  const arr = Array.from({ length: n }, (_, i) => i)
+  for (let i = n - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]] }
+  return arr
+}
+
+// --- Numeric / fraction / standard-form parsers (for fill-in answers) -----
 function ch5_gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b] } return a || 1 }
 function ch5_reduce(n, d) {
-  if (d === 0) return { n: NaN, d: 1 }
+  if (d === 0) return null
   if (d < 0) { n = -n; d = -d }
   const g = ch5_gcd(n, d)
   return { n: n / g, d: d / g }
 }
-// Parse "a/b", "a b/c", "-a/b", "a", "1.5", "-2 3/4" → {n, d} reduced
 function ch5_parseFrac(raw) {
   if (raw == null) return null
-  let s = String(raw).trim().replace(/\s+/g, ' ').replace(/–/g, '-')
+  let s = String(raw).trim().replace(/\\frac\{(-?\d+)\}\{(-?\d+)\}/g, '$1/$2').replace(/\s+/g, ' ').replace(/–/g, '-')
   if (!s) return null
-  // Mixed number: "a b/c" or "-a b/c"
   const mixed = s.match(/^(-?)(\d+)\s+(\d+)\s*\/\s*(\d+)$/)
   if (mixed) {
     const sign = mixed[1] === '-' ? -1 : 1
-    const w = parseInt(mixed[2], 10), n = parseInt(mixed[3], 10), d = parseInt(mixed[4], 10)
+    const w = +mixed[2], n = +mixed[3], d = +mixed[4]
     if (d === 0) return null
     return ch5_reduce(sign * (w * d + n), d)
   }
-  // Plain fraction
   const frac = s.match(/^(-?\d+)\s*\/\s*(-?\d+)$/)
   if (frac) {
-    const n = parseInt(frac[1], 10), d = parseInt(frac[2], 10)
+    const n = +frac[1], d = +frac[2]
     if (d === 0) return null
     return ch5_reduce(n, d)
   }
-  // Plain number / decimal
   const num = Number(s)
   if (Number.isFinite(num)) {
     if (Number.isInteger(num)) return { n: num, d: 1 }
-    // Convert decimal like 1.25 → 5/4 via *10000 then reduce
     const sign = num < 0 ? -1 : 1
-    const abs = Math.abs(num)
     const decimals = (s.split('.')[1] || '').length
     const denom = Math.pow(10, decimals)
-    return ch5_reduce(sign * Math.round(abs * denom), denom)
+    return ch5_reduce(sign * Math.round(Math.abs(num) * denom), denom)
   }
   return null
 }
-function ch5_fracEqual(a, b) {
-  if (!a || !b) return false
-  return a.n === b.n && a.d === b.d
+function ch5_fracEqual(a, b) { return a && b && a.n === b.n && a.d === b.d }
+function ch5_normalizeNumStr(s) {
+  return String(s).trim().replace(/[$,\s%]/g, '').replace(/–/g, '-')
 }
-// Format reduced fraction back as either improper "n/d" or mixed "w n/d"
-function ch5_fmtFrac(f, asMixed = false) {
-  if (!f) return ''
-  if (f.d === 1) return String(f.n)
-  if (!asMixed || Math.abs(f.n) < f.d) return `${f.n}/${f.d}`
-  const sign = f.n < 0 ? -1 : 1
-  const an = Math.abs(f.n)
-  const w = Math.floor(an / f.d)
-  const r = an % f.d
-  if (r === 0) return String(sign * w)
-  return `${sign * w} ${r}/${f.d}`
+function ch5_numEqual(user, expected, tol) {
+  const u = parseFloat(ch5_normalizeNumStr(user))
+  if (!Number.isFinite(u)) return false
+  const t = tol != null ? tol : Math.max(0.005, Math.abs(expected) * 0.005)
+  return Math.abs(u - expected) <= t
 }
-
-// --- Standard form helpers ------------------------------------------------
-// Parse "3.4 x 10^5", "3.4*10^5", "3.4e5", "3.4 × 10⁵", "3.4 × 10^-3" → {a, n}
 function ch5_parseStd(raw) {
   if (raw == null) return null
   let s = String(raw).trim().toLowerCase().replace(/\s+/g, '').replace(/–/g, '-').replace(/×/g, 'x').replace(/\*/g, 'x')
-  // "3.4e5" or "3.4e-5"
   let m = s.match(/^(-?\d+(?:\.\d+)?)e(-?\d+)$/)
   if (m) return { a: parseFloat(m[1]), n: parseInt(m[2], 10) }
-  // "3.4x10^5" or "3.4x10^-5" or "3.4x10-5"
   m = s.match(/^(-?\d+(?:\.\d+)?)x10\^?(-?\d+)$/)
   if (m) return { a: parseFloat(m[1]), n: parseInt(m[2], 10) }
-  // Bare number → standard form with n=0
   const f = parseFloat(s)
   if (Number.isFinite(f)) return { a: f, n: 0 }
   return null
 }
 function ch5_stdValue(s) { return s ? s.a * Math.pow(10, s.n) : NaN }
-function ch5_stdEqual(user, expected, tol = 0.001) {
-  if (!user || !expected) return false
+function ch5_stdEqual(user, expected, tol) {
   const u = ch5_stdValue(user), e = ch5_stdValue(expected)
   if (!Number.isFinite(u) || !Number.isFinite(e)) return false
-  if (e === 0) return Math.abs(u) < tol
-  return Math.abs((u - e) / e) <= tol
+  if (e === 0) return Math.abs(u) < (tol || 0.001)
+  return Math.abs((u - e) / e) <= (tol || 0.001)
 }
 
-// --- Numeric helpers ------------------------------------------------------
-function ch5_numEqual(user, expected, tol = 0.01) {
-  const u = parseFloat(String(user).replace(/,/g, '').replace(/%/g, '').trim())
-  if (!Number.isFinite(u)) return false
-  if (expected === 0) return Math.abs(u) < tol
-  return Math.abs(u - expected) <= Math.max(tol, Math.abs(expected) * 0.005)
-}
-
-// --- Universal answer checker --------------------------------------------
-function ch5_check(q, raw) {
+// Universal answer checker (used only by fill-in questions)
+function ch5_checkFill(q, raw) {
   if (!raw || !raw.trim()) return false
   switch (q.kind) {
-    case 'frac': {
+    case 'fill-num': return ch5_numEqual(raw, q.answer, q.tol)
+    case 'fill-frac': {
       const u = ch5_parseFrac(raw)
       const e = ch5_parseFrac(q.answer)
       return ch5_fracEqual(u, e)
     }
-    case 'num':
-      return ch5_numEqual(raw, q.answer, q.tol || 0.01)
-    case 'std': {
-      const u = ch5_parseStd(raw)
-      const e = ch5_parseStd(q.answer)
-      return ch5_stdEqual(u, e, q.tol || 0.001)
-    }
-    case 'text':
-      return String(raw).trim().toLowerCase() === String(q.answer).trim().toLowerCase()
-    default:
-      return false
+    case 'fill-std': return ch5_stdEqual(ch5_parseStd(raw), ch5_parseStd(q.answer), q.tol)
+    case 'fill-text': return raw.trim().toLowerCase() === String(q.answer).trim().toLowerCase()
+    default: return false
   }
 }
 
-// --- Lesson data ---------------------------------------------------------
+// --- Lesson catalogue ---------------------------------------------------
+// Each lesson:
+//   { id, title, teach: { heading, body[], example }, qFormat?, questions[] }
+// Each question is one of:
+//   { kind:'mcq',       prompt, options[], correct,           solution }
+//   { kind:'fill-num',  prompt, answer (number),    tol?,     solution }
+//   { kind:'fill-frac', prompt, answer ('a/b' str),           solution }
+//   { kind:'fill-std',  prompt, answer ('ax10^n' str),        solution }
+// Strings in prompt/options/solution may use \\frac{a}{b} and ^N — they're
+// passed through renderMath() for typography.
 const CH5_LESSONS = [
+  // ───────────────────── Lesson 1: Equivalent fractions ─────────────────
   {
     id: 'L1',
     title: 'Lesson 1 · Equivalent fractions',
     teach: {
       heading: 'When are two fractions equivalent?',
       body: [
-        'Two fractions are equivalent when they describe the same amount, even if the numerator and denominator look different.',
-        'The rule: if you multiply (or divide) the top AND bottom of a fraction by the same non-zero number, you get an equivalent fraction.',
-        'Example: 2/3 = (2×4)/(3×4) = 8/12. So 2/3 and 8/12 are equivalent — both describe the same slice of a pie.',
-        'To check whether two fractions are equivalent, reduce both to simplest form (or cross-multiply: a/b = c/d ⇔ a×d = b×c).',
+        'Two fractions are EQUIVALENT when they represent the same amount, even if they look different.',
+        'Rule: multiplying (or dividing) both the top AND bottom of a fraction by the same non-zero number gives an equivalent fraction.',
+        'So \\frac{2}{3} = \\frac{2 \\times 4}{3 \\times 4} = \\frac{8}{12}.',
+        'To check: reduce both to simplest form, OR cross-multiply (\\frac{a}{b} = \\frac{c}{d} ⇔ a × d = b × c).',
       ],
-      example: 'Are 6/9 and 8/12 equivalent? Reduce both: 6/9 = 2/3 and 8/12 = 2/3. They match, so YES.',
+      example: 'Are \\frac{6}{9} and \\frac{8}{12} equivalent? Both reduce to \\frac{2}{3}, so YES.',
     },
-    qFormat: 'Answer with "yes" or "no" (or, if asked, type the missing number).',
     questions: [
-      { kind: 'text', prompt: 'Are 1/2 and 4/8 equivalent?', answer: 'yes', solution: '1/2 × 4/4 = 4/8. Same value.' },
-      { kind: 'text', prompt: 'Are 2/3 and 6/9 equivalent?', answer: 'yes', solution: '2×3=6, 3×3=9.' },
-      { kind: 'text', prompt: 'Are 3/4 and 9/16 equivalent?', answer: 'no', solution: '3/4 = 12/16, not 9/16.' },
-      { kind: 'num', prompt: 'Fill in the blank: 2/5 = ? / 20', answer: 8, solution: 'Multiply top and bottom by 4: 2×4=8.' },
-      { kind: 'num', prompt: 'Fill in the blank: 3/7 = 12 / ?', answer: 28, solution: '12÷3 = 4, so multiply 7×4 = 28.' },
-      { kind: 'num', prompt: 'Fill in the blank: 9/15 = 3 / ?', answer: 5, solution: 'Divide top and bottom by 3.' },
-      { kind: 'text', prompt: 'Are 14/21 and 2/3 equivalent?', answer: 'yes', solution: '14/21 ÷ 7/7 = 2/3.' },
-      { kind: 'text', prompt: 'Are 18/24 and 3/4 equivalent?', answer: 'yes', solution: '18/24 ÷ 6/6 = 3/4.' },
+      { kind: 'mcq', prompt: 'Which fraction is equivalent to \\frac{1}{2}?',
+        options: ['\\frac{4}{8}', '\\frac{3}{8}', '\\frac{4}{6}', '\\frac{2}{6}'], correct: 0,
+        solution: '\\frac{1}{2} \\times \\frac{4}{4} = \\frac{4}{8}.' },
+      { kind: 'mcq', prompt: 'Which fraction is equivalent to \\frac{2}{3}?',
+        options: ['\\frac{6}{9}', '\\frac{4}{9}', '\\frac{3}{6}', '\\frac{6}{12}'], correct: 0,
+        solution: '\\frac{2 \\times 3}{3 \\times 3} = \\frac{6}{9}.' },
+      { kind: 'mcq', prompt: 'Which is NOT equivalent to \\frac{3}{4}?',
+        options: ['\\frac{9}{16}', '\\frac{6}{8}', '\\frac{12}{16}', '\\frac{15}{20}'], correct: 0,
+        solution: '\\frac{3}{4} = \\frac{12}{16}, not \\frac{9}{16}.' },
+      { kind: 'fill-num', prompt: 'Fill in the blank: \\frac{2}{5} = \\frac{?}{20}', answer: 8,
+        solution: 'Multiply top and bottom by 4: 2 \\times 4 = 8.' },
+      { kind: 'fill-num', prompt: 'Fill in the blank: \\frac{3}{7} = \\frac{12}{?}', answer: 28,
+        solution: '12 \\div 3 = 4, so 7 \\times 4 = 28.' },
+      { kind: 'fill-num', prompt: 'Fill in the blank: \\frac{9}{15} = \\frac{3}{?}', answer: 5,
+        solution: 'Divide both by 3.' },
+      { kind: 'mcq', prompt: 'Are \\frac{14}{21} and \\frac{2}{3} equivalent?',
+        options: ['Yes', 'No'], correct: 0, solution: '14 \\div 7 = 2, 21 \\div 7 = 3.' },
+      { kind: 'mcq', prompt: 'Are \\frac{5}{9} and \\frac{15}{18} equivalent?',
+        options: ['No', 'Yes'], correct: 0, solution: '\\frac{5}{9} = \\frac{10}{18}, not \\frac{15}{18}.' },
     ],
   },
+
+  // ───────────────────── Lesson 2: Simplest form (Ex 5.1) ────────────────
   {
     id: 'L2',
     title: 'Lesson 2 · Simplest form (Exercise 5.1)',
     teach: {
       heading: 'Reducing a fraction to its simplest (lowest) form',
       body: [
-        'A fraction is in simplest form when the numerator and denominator share no common factor other than 1.',
-        'Method: divide BOTH numerator and denominator by their highest common factor (HCF).',
-        'If you can\'t spot the HCF, reduce step by step — divide by any common factor (2, 3, 5, …) and repeat until nothing else divides.',
+        'A fraction is in SIMPLEST form when the numerator and denominator share no common factor other than 1.',
+        'Method: divide BOTH top and bottom by their highest common factor (HCF).',
+        'If you can\'t spot the HCF, peel off small factors (2, 3, 5, …) one at a time until nothing else divides.',
       ],
-      example: 'Simplify 18/72. HCF(18, 72) = 18, so 18/72 = (18÷18)/(72÷18) = 1/4.',
+      example: 'Simplify \\frac{18}{72}. HCF(18, 72) = 18 → \\frac{18}{72} = \\frac{1}{4}.',
     },
-    qFormat: 'Type your answer as a fraction "a/b" (e.g. 1/4).',
     questions: [
-      { kind: 'frac', prompt: 'Simplify: 4/8', answer: '1/2', solution: 'HCF = 4 → 1/2.' },
-      { kind: 'frac', prompt: 'Simplify: 6/9', answer: '2/3', solution: 'HCF = 3 → 2/3.' },
-      { kind: 'frac', prompt: 'Simplify: 9/12', answer: '3/4', solution: 'HCF = 3.' },
-      { kind: 'frac', prompt: 'Simplify: 16/24', answer: '2/3', solution: 'HCF = 8.' },
-      { kind: 'frac', prompt: 'Simplify: 21/28', answer: '3/4', solution: 'HCF = 7.' },
-      { kind: 'frac', prompt: 'Simplify: 18/72', answer: '1/4', solution: 'HCF = 18.' },
-      { kind: 'frac', prompt: 'Simplify: 7/21', answer: '1/3', solution: 'HCF = 7.' },
-      { kind: 'frac', prompt: 'Simplify: 4/16', answer: '1/4', solution: 'HCF = 4.' },
-      { kind: 'frac', prompt: 'Simplify: 3/27', answer: '1/9', solution: 'HCF = 3.' },
-      { kind: 'frac', prompt: 'Simplify: 15/300', answer: '1/20', solution: 'HCF = 15.' },
-      { kind: 'frac', prompt: 'Simplify: 500/2500', answer: '1/5', solution: 'HCF = 500.' },
-      { kind: 'frac', prompt: 'Simplify: 24/72', answer: '1/3', solution: 'HCF = 24.' },
-      { kind: 'frac', prompt: 'Simplify: 100/360', answer: '5/18', solution: 'HCF = 20.' },
-      { kind: 'frac', prompt: 'Simplify: 110/128', answer: '55/64', solution: 'HCF = 2.' },
+      { kind: 'mcq', prompt: 'Simplify \\frac{4}{8}',
+        options: ['\\frac{1}{2}', '\\frac{2}{4}', '\\frac{1}{4}', '\\frac{2}{3}'], correct: 0, solution: 'HCF = 4.' },
+      { kind: 'mcq', prompt: 'Simplify \\frac{6}{9}',
+        options: ['\\frac{2}{3}', '\\frac{3}{4}', '\\frac{1}{3}', '\\frac{3}{6}'], correct: 0, solution: 'HCF = 3.' },
+      { kind: 'mcq', prompt: 'Simplify \\frac{9}{12}',
+        options: ['\\frac{3}{4}', '\\frac{2}{3}', '\\frac{4}{5}', '\\frac{9}{4}'], correct: 0, solution: 'HCF = 3.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{16}{24}', answer: '2/3', solution: 'HCF = 8.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{21}{28}', answer: '3/4', solution: 'HCF = 7.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{18}{72}', answer: '1/4', solution: 'HCF = 18.' },
+      { kind: 'mcq', prompt: 'Simplify \\frac{7}{21}',
+        options: ['\\frac{1}{3}', '\\frac{1}{4}', '\\frac{7}{3}', '\\frac{2}{3}'], correct: 0, solution: 'HCF = 7.' },
+      { kind: 'mcq', prompt: 'Simplify \\frac{4}{16}',
+        options: ['\\frac{1}{4}', '\\frac{2}{8}', '\\frac{1}{2}', '\\frac{2}{4}'], correct: 0, solution: 'HCF = 4.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{3}{27}', answer: '1/9', solution: 'HCF = 3.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{15}{300}', answer: '1/20', solution: 'HCF = 15.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{500}{2500}', answer: '1/5', solution: 'HCF = 500.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{24}{72}', answer: '1/3', solution: 'HCF = 24.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{100}{360}', answer: '5/18', solution: 'HCF = 20.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{110}{128}', answer: '55/64', solution: 'HCF = 2.' },
     ],
   },
+
+  // ───────────────────── Lesson 3: Multiplying fractions (Ex 5.2) ────────
   {
     id: 'L3',
     title: 'Lesson 3 · Multiplying fractions (Exercise 5.2)',
     teach: {
       heading: 'How to multiply two fractions',
       body: [
-        'Rule: multiply the numerators together and multiply the denominators together. Then simplify.',
-        '(a/b) × (c/d) = (a × c) / (b × d).',
-        'For mixed numbers, convert to improper fractions FIRST, e.g. 1¼ = 5/4. Then multiply.',
-        'Tip: if a numerator and a denominator share a common factor, cancel it BEFORE multiplying — keeps numbers small.',
+        'Rule: multiply the numerators together, multiply the denominators together. Simplify at the end.',
+        '\\frac{a}{b} \\times \\frac{c}{d} = \\frac{a \\times c}{b \\times d}.',
+        'For mixed numbers, convert to improper FIRST: 1\\frac{1}{4} = \\frac{5}{4}, then multiply.',
+        'Tip: cancel common factors between any numerator and any denominator BEFORE multiplying — it keeps the numbers small.',
       ],
-      example: '1¼ × 1⅔ = 5/4 × 5/3 = 25/12 = 2 1/12.',
+      example: '1\\frac{1}{4} \\times 1\\frac{2}{3} = \\frac{5}{4} \\times \\frac{5}{3} = \\frac{25}{12} = 2\\frac{1}{12}.',
     },
-    qFormat: 'Type your answer as a fraction "a/b" or mixed number "w a/b". Improper fractions also accepted.',
     questions: [
-      { kind: 'frac', prompt: '1/2 × 1/3', answer: '1/6', solution: '1×1 / 2×3 = 1/6.' },
-      { kind: 'frac', prompt: '2/3 × 3/4', answer: '1/2', solution: '6/12 = 1/2.' },
-      { kind: 'frac', prompt: '5/6 × 1/3', answer: '5/18', solution: '5×1 / 6×3.' },
-      { kind: 'frac', prompt: '3/4 × 2/5', answer: '3/10', solution: '6/20 = 3/10.' },
-      { kind: 'frac', prompt: '4/9 × 3/8', answer: '1/6', solution: '12/72 = 1/6.' },
-      { kind: 'frac', prompt: '7/8 × 9/16', answer: '63/128', solution: '7×9 / 8×16.' },
-      { kind: 'frac', prompt: '1 1/4 × 1 2/3', answer: '25/12', solution: '5/4 × 5/3 = 25/12 = 2 1/12.' },
-      { kind: 'frac', prompt: '5 2/3 × 4 1/5', answer: '357/15', solution: '17/3 × 21/5 = 357/15 = 119/5 = 23 4/5.' },
-      { kind: 'frac', prompt: '1 7/8 × 24', answer: '45', solution: '15/8 × 24 = 360/8 = 45.' },
-      { kind: 'frac', prompt: '5 1/4 × 1 1/8', answer: '189/32', solution: '21/4 × 9/8 = 189/32 = 5 29/32.' },
+      { kind: 'mcq', prompt: '\\frac{1}{2} \\times \\frac{1}{3}',
+        options: ['\\frac{1}{6}', '\\frac{2}{5}', '\\frac{1}{5}', '\\frac{2}{6}'], correct: 0, solution: 'Numerators: 1×1=1. Denominators: 2×3=6.' },
+      { kind: 'mcq', prompt: '\\frac{2}{3} \\times \\frac{3}{4}',
+        options: ['\\frac{1}{2}', '\\frac{6}{12}', '\\frac{5}{7}', '\\frac{2}{4}'], correct: 0, solution: '\\frac{6}{12} = \\frac{1}{2}.' },
+      { kind: 'mcq', prompt: '\\frac{5}{6} \\times \\frac{1}{3}',
+        options: ['\\frac{5}{18}', '\\frac{6}{18}', '\\frac{5}{9}', '\\frac{1}{18}'], correct: 0, solution: '5×1 / 6×3 = 5/18.' },
+      { kind: 'mcq', prompt: '\\frac{3}{4} \\times \\frac{2}{5}',
+        options: ['\\frac{3}{10}', '\\frac{6}{20}', '\\frac{5}{20}', '\\frac{6}{9}'], correct: 0, solution: '\\frac{6}{20} = \\frac{3}{10}.' },
+      { kind: 'mcq', prompt: '\\frac{4}{9} \\times \\frac{3}{8}',
+        options: ['\\frac{1}{6}', '\\frac{12}{72}', '\\frac{7}{17}', '\\frac{2}{6}'], correct: 0, solution: '\\frac{12}{72} = \\frac{1}{6}.' },
+      { kind: 'fill-frac', prompt: '\\frac{7}{8} \\times \\frac{9}{16}', answer: '63/128', solution: '7×9 = 63, 8×16 = 128. Already in simplest form.' },
+      { kind: 'fill-frac', prompt: '1\\frac{1}{4} \\times 1\\frac{2}{3}', answer: '25/12', solution: '\\frac{5}{4} \\times \\frac{5}{3} = \\frac{25}{12} = 2\\frac{1}{12}.' },
+      { kind: 'fill-frac', prompt: '5\\frac{2}{3} \\times 4\\frac{1}{5}', answer: '119/5', solution: '\\frac{17}{3} \\times \\frac{21}{5} = \\frac{357}{15} = \\frac{119}{5} = 23\\frac{4}{5}.' },
+      { kind: 'fill-num', prompt: '1\\frac{7}{8} \\times 24', answer: 45, solution: '\\frac{15}{8} \\times 24 = \\frac{360}{8} = 45.' },
+      { kind: 'fill-frac', prompt: '5\\frac{1}{4} \\times 1\\frac{1}{8}', answer: '189/32', solution: '\\frac{21}{4} \\times \\frac{9}{8} = \\frac{189}{32} = 5\\frac{29}{32}.' },
+      { kind: 'mcq', prompt: '\\frac{2}{5} \\times 10',
+        options: ['4', '\\frac{2}{50}', '20', '5'], correct: 0, solution: '\\frac{2 \\times 10}{5} = \\frac{20}{5} = 4.' },
     ],
   },
+
+  // ───────────────────── Lesson 4: Add/subtract (Ex 5.3) ──────────────────
   {
     id: 'L4',
-    title: 'Lesson 4 · Adding & subtracting fractions (Exercise 5.3)',
+    title: 'Lesson 4 · Adding and subtracting fractions (Exercise 5.3)',
     teach: {
       heading: 'Adding and subtracting fractions',
       body: [
-        'You can only add or subtract fractions that share the same denominator.',
-        'Step 1: Find the LCM of the denominators — that\'s the common denominator.',
-        'Step 2: Rewrite each fraction with the new denominator (multiply top AND bottom by the right number).',
-        'Step 3: Add (or subtract) the numerators. Keep the denominator the same.',
-        'Step 4: Simplify, and convert improper fractions back to mixed numbers if needed.',
-        'For mixed numbers: convert to improper first, OR work whole-parts and fractional-parts separately.',
+        'You can only add or subtract fractions that share the SAME denominator.',
+        'Step 1: find the LCM of the denominators — the common denominator.',
+        'Step 2: rewrite each fraction with that new denominator.',
+        'Step 3: add (or subtract) the numerators. Keep the denominator the same.',
+        'Step 4: simplify; convert improper fractions to mixed if asked.',
+        'For mixed numbers, either convert to improper first OR handle whole-parts and fractional-parts separately.',
       ],
-      example: '3/4 + 4/5. LCM(4,5)=20. = 15/20 + 16/20 = 31/20 = 1 11/20.',
+      example: '\\frac{3}{4} + \\frac{4}{5}: LCM = 20. = \\frac{15}{20} + \\frac{16}{20} = \\frac{31}{20} = 1\\frac{11}{20}.',
     },
-    qFormat: 'Answer as a fraction "a/b" or mixed "w a/b" (improper accepted).',
     questions: [
-      { kind: 'frac', prompt: '1/3 + 1/3', answer: '2/3', solution: 'Same denominator: 1+1=2.' },
-      { kind: 'frac', prompt: '5/7 + 3/7', answer: '8/7', solution: '8/7 = 1 1/7.' },
-      { kind: 'frac', prompt: '8/9 - 5/9', answer: '3/9', solution: '3/9 = 1/3.' },
-      { kind: 'frac', prompt: '9/10 - 3/10', answer: '6/10', solution: '6/10 = 3/5.' },
-      { kind: 'frac', prompt: '7/8 - 1/8', answer: '6/8', solution: '6/8 = 3/4.' },
-      { kind: 'frac', prompt: '2 5/8 + 1 3/8', answer: '4', solution: '21/8 + 11/8 = 32/8 = 4.' },
-      { kind: 'frac', prompt: '4 - 2/5', answer: '18/5', solution: '20/5 - 2/5 = 18/5 = 3 3/5.' },
-      { kind: 'frac', prompt: '6 + 4/15', answer: '94/15', solution: '90/15 + 4/15 = 94/15 = 6 4/15.' },
-      { kind: 'frac', prompt: '11 - 7/8', answer: '81/8', solution: '88/8 - 7/8 = 81/8 = 10 1/8.' },
-      { kind: 'frac', prompt: '3/4 + 4/5', answer: '31/20', solution: 'LCM 20: 15/20 + 16/20 = 31/20.' },
-      { kind: 'frac', prompt: '7 5/8 - 4 1/4', answer: '27/8', solution: '61/8 - 17/4 = 61/8 - 34/8 = 27/8 = 3 3/8.' },
-      { kind: 'frac', prompt: '2 + 3 1/4', answer: '21/4', solution: '8/4 + 13/4 = 21/4 = 5 1/4.' },
-      { kind: 'frac', prompt: '1 1/2 + 2 5/8 - 3/4', answer: '27/8', solution: '12/8 + 21/8 - 6/8 = 27/8 = 3 3/8.' },
+      { kind: 'mcq', prompt: '\\frac{1}{3} + \\frac{1}{3}',
+        options: ['\\frac{2}{3}', '\\frac{1}{6}', '\\frac{2}{6}', '\\frac{1}{3}'], correct: 0, solution: 'Same denom: 1+1 = 2.' },
+      { kind: 'mcq', prompt: '\\frac{5}{7} + \\frac{3}{7}',
+        options: ['\\frac{8}{7}', '\\frac{8}{14}', '\\frac{2}{7}', '\\frac{15}{7}'], correct: 0, solution: '\\frac{8}{7} = 1\\frac{1}{7}.' },
+      { kind: 'mcq', prompt: '\\frac{8}{9} - \\frac{5}{9}',
+        options: ['\\frac{1}{3}', '\\frac{3}{9}', '\\frac{3}{0}', '\\frac{13}{9}'], correct: 0, solution: '\\frac{3}{9} = \\frac{1}{3}.' },
+      { kind: 'fill-frac', prompt: '\\frac{9}{10} - \\frac{3}{10}', answer: '3/5', solution: '\\frac{6}{10} = \\frac{3}{5}.' },
+      { kind: 'fill-frac', prompt: '\\frac{7}{8} - \\frac{1}{8}', answer: '3/4', solution: '\\frac{6}{8} = \\frac{3}{4}.' },
+      { kind: 'mcq', prompt: '2\\frac{5}{8} + 1\\frac{3}{8}',
+        options: ['4', '3\\frac{8}{8}', '3\\frac{8}{16}', '4\\frac{1}{4}'], correct: 0, solution: '\\frac{21}{8} + \\frac{11}{8} = \\frac{32}{8} = 4.' },
+      { kind: 'fill-frac', prompt: '4 - \\frac{2}{5}', answer: '18/5', solution: '\\frac{20-2}{5} = \\frac{18}{5} = 3\\frac{3}{5}.' },
+      { kind: 'fill-frac', prompt: '6 + \\frac{4}{15}', answer: '94/15', solution: '\\frac{90+4}{15} = \\frac{94}{15}.' },
+      { kind: 'fill-frac', prompt: '11 - \\frac{7}{8}', answer: '81/8', solution: '\\frac{88-7}{8} = \\frac{81}{8} = 10\\frac{1}{8}.' },
+      { kind: 'mcq', prompt: '\\frac{3}{4} + \\frac{4}{5}',
+        options: ['\\frac{31}{20}', '\\frac{7}{9}', '\\frac{31}{40}', '1\\frac{1}{20}'], correct: 0, solution: 'LCM 20: \\frac{15}{20} + \\frac{16}{20}.' },
+      { kind: 'fill-frac', prompt: '7\\frac{5}{8} - 4\\frac{1}{4}', answer: '27/8', solution: '\\frac{61}{8} - \\frac{34}{8} = \\frac{27}{8} = 3\\frac{3}{8}.' },
+      { kind: 'fill-frac', prompt: '2 + 3\\frac{1}{4}', answer: '21/4', solution: '\\frac{8+13}{4} = \\frac{21}{4} = 5\\frac{1}{4}.' },
+      { kind: 'fill-frac', prompt: '1\\frac{1}{2} + 2\\frac{5}{8} - \\frac{3}{4}', answer: '27/8', solution: '\\frac{12+21-6}{8} = \\frac{27}{8} = 3\\frac{3}{8}.' },
+      { kind: 'fill-frac', prompt: '5\\frac{1}{2} + 3\\frac{1}{3} + 4\\frac{8}{15}', answer: '413/30', solution: 'LCM 30: \\frac{165}{30} + \\frac{100}{30} + \\frac{136 + 12}{30} = \\frac{413}{30} = 13\\frac{23}{30}.' },
     ],
   },
+
+  // ───────────────────── Lesson 5: Dividing fractions (Ex 5.4) ────────────
   {
     id: 'L5',
     title: 'Lesson 5 · Dividing fractions (Exercise 5.4)',
@@ -5429,365 +5458,504 @@ const CH5_LESSONS = [
       heading: 'How to divide one fraction by another',
       body: [
         'To divide by a fraction, multiply by its RECIPROCAL (flip the second fraction upside down).',
-        '(a/b) ÷ (c/d) = (a/b) × (d/c) = (a×d) / (b×c).',
-        'For mixed numbers, convert to improper fractions FIRST.',
-        'For whole numbers, write n as n/1 (so its reciprocal is 1/n).',
+        '\\frac{a}{b} \\div \\frac{c}{d} = \\frac{a}{b} \\times \\frac{d}{c} = \\frac{a \\times d}{b \\times c}.',
+        'For mixed numbers, convert to improper FIRST.',
+        'A whole number n is just \\frac{n}{1}, so its reciprocal is \\frac{1}{n}.',
       ],
-      example: '1¼ ÷ 3½ = 5/4 ÷ 7/2 = 5/4 × 2/7 = 10/28 = 5/14.',
+      example: '1\\frac{1}{4} \\div 3\\frac{1}{2} = \\frac{5}{4} \\div \\frac{7}{2} = \\frac{5}{4} \\times \\frac{2}{7} = \\frac{10}{28} = \\frac{5}{14}.',
     },
-    qFormat: 'Answer as a fraction or mixed number.',
     questions: [
-      { kind: 'frac', prompt: '1/3 ÷ 1/5', answer: '5/3', solution: '1/3 × 5/1 = 5/3.' },
-      { kind: 'frac', prompt: '2/3 ÷ 4/5', answer: '5/6', solution: '2/3 × 5/4 = 10/12 = 5/6.' },
-      { kind: 'frac', prompt: '8 ÷ 7', answer: '8/7', solution: '8/1 × 1/7 = 8/7.' },
-      { kind: 'frac', prompt: '10/11 ÷ 5', answer: '2/11', solution: '10/11 × 1/5 = 10/55 = 2/11.' },
-      { kind: 'frac', prompt: '4 1/2 ÷ 1/4', answer: '18', solution: '9/2 × 4/1 = 36/2 = 18.' },
-      { kind: 'frac', prompt: '1 1/2 ÷ 1/3', answer: '9/2', solution: '3/2 × 3/1 = 9/2 = 4 1/2.' },
-      { kind: 'frac', prompt: '1 1/4 ÷ 3 1/2', answer: '5/14', solution: '5/4 × 2/7 = 10/28 = 5/14.' },
-      { kind: 'frac', prompt: '3/8 ÷ 1/2', answer: '3/4', solution: '3/8 × 2/1 = 6/8 = 3/4.' },
+      { kind: 'mcq', prompt: '\\frac{1}{3} \\div \\frac{1}{5}',
+        options: ['\\frac{5}{3}', '\\frac{1}{15}', '\\frac{3}{5}', '\\frac{8}{15}'], correct: 0, solution: '\\frac{1}{3} \\times \\frac{5}{1} = \\frac{5}{3}.' },
+      { kind: 'mcq', prompt: '\\frac{2}{3} \\div \\frac{4}{5}',
+        options: ['\\frac{5}{6}', '\\frac{8}{15}', '\\frac{6}{5}', '\\frac{10}{12}'], correct: 0, solution: '\\frac{2}{3} \\times \\frac{5}{4} = \\frac{10}{12} = \\frac{5}{6}.' },
+      { kind: 'fill-frac', prompt: '8 \\div 7', answer: '8/7', solution: '\\frac{8}{1} \\times \\frac{1}{7} = \\frac{8}{7}.' },
+      { kind: 'fill-frac', prompt: '\\frac{10}{11} \\div 5', answer: '2/11', solution: '\\frac{10}{11} \\times \\frac{1}{5} = \\frac{10}{55} = \\frac{2}{11}.' },
+      { kind: 'fill-num', prompt: '4\\frac{1}{2} \\div \\frac{1}{4}', answer: 18, solution: '\\frac{9}{2} \\times \\frac{4}{1} = \\frac{36}{2} = 18.' },
+      { kind: 'mcq', prompt: '1\\frac{1}{2} \\div \\frac{1}{3}',
+        options: ['\\frac{9}{2}', '\\frac{1}{2}', '\\frac{2}{9}', '\\frac{6}{1}'], correct: 0, solution: '\\frac{3}{2} \\times \\frac{3}{1} = \\frac{9}{2} = 4\\frac{1}{2}.' },
+      { kind: 'fill-frac', prompt: '1\\frac{1}{4} \\div 3\\frac{1}{2}', answer: '5/14', solution: '\\frac{5}{4} \\times \\frac{2}{7} = \\frac{10}{28} = \\frac{5}{14}.' },
+      { kind: 'fill-frac', prompt: '\\frac{3}{8} \\div \\frac{1}{2}', answer: '3/4', solution: '\\frac{3}{8} \\times \\frac{2}{1} = \\frac{6}{8} = \\frac{3}{4}.' },
+      { kind: 'mcq', prompt: '7\\frac{1}{3} \\div 5\\frac{1}{2}',
+        options: ['\\frac{4}{3}', '\\frac{3}{4}', '\\frac{22}{15}', '\\frac{2}{3}'], correct: 0,
+        solution: '\\frac{22}{3} \\div \\frac{11}{2} = \\frac{22}{3} \\times \\frac{2}{11} = \\frac{44}{33} = \\frac{4}{3}.' },
     ],
   },
+
+  // ───────────────────── Lesson 6: Fractions with decimals (Ex 5.5) ───────
   {
     id: 'L6',
     title: 'Lesson 6 · Fractions with decimals (Exercise 5.5)',
     teach: {
-      heading: 'Cleaning up fractions that have decimals in them',
+      heading: 'Cleaning up fractions with decimals in them',
       body: [
-        'A fraction whose top or bottom contains a decimal isn\'t in simplest form. Fix that first.',
-        'Multiply BOTH numerator and denominator by the same power of 10 to clear the decimals — then simplify.',
-        'If the numerator has 1 decimal place, multiply by 10. If 2 decimal places, multiply by 100. Use the larger power if top and bottom differ.',
+        'A fraction with a decimal in it is not in simplest form. Fix it first.',
+        'Multiply BOTH top and bottom by the same power of 10 to clear decimals — then simplify.',
+        '1 d.p. → ×10. 2 d.p. → ×100. If top and bottom differ, use the bigger power.',
       ],
-      example: '0.1 / 3 = (0.1 × 10) / (3 × 10) = 1/30.',
+      example: '\\frac{0.1}{3} = \\frac{0.1 \\times 10}{3 \\times 10} = \\frac{1}{30}.',
     },
-    qFormat: 'Answer as a fraction in simplest form.',
     questions: [
-      { kind: 'frac', prompt: '0.1 / 3', answer: '1/30', solution: 'Multiply ×10: 1/30.' },
-      { kind: 'frac', prompt: '1.3 / 2.4', answer: '13/24', solution: 'Multiply both ×10: 13/24.' },
-      { kind: 'frac', prompt: '3.6 / 0.12', answer: '30', solution: '3.6/0.12 = 360/12 = 30.' },
-      { kind: 'frac', prompt: '0.4 / 0.5', answer: '4/5', solution: 'Multiply ×10.' },
-      { kind: 'frac', prompt: '6 / 0.5', answer: '12', solution: '60/5 = 12.' },
-      { kind: 'frac', prompt: '0.7 / 2.5', answer: '7/25', solution: 'Multiply ×10: 7/25.' },
-      { kind: 'frac', prompt: '0.3 × 1.3 / 1.8', answer: '13/60', solution: '0.39/1.8 = 39/180 = 13/60.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{0.1}{3}', answer: '1/30', solution: '×10 top and bottom.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{1.3}{2.4}', answer: '13/24', solution: '×10 top and bottom.' },
+      { kind: 'fill-num', prompt: 'Simplify \\frac{3.6}{0.12}', answer: 30, solution: '\\frac{360}{12} = 30.' },
+      { kind: 'mcq', prompt: 'Simplify \\frac{0.4}{0.5}',
+        options: ['\\frac{4}{5}', '\\frac{1}{2}', '\\frac{2}{5}', '\\frac{5}{4}'], correct: 0, solution: '×10: \\frac{4}{5}.' },
+      { kind: 'fill-num', prompt: 'Simplify \\frac{6}{0.5}', answer: 12, solution: '\\frac{60}{5} = 12.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{0.7}{2.5}', answer: '7/25', solution: '×10: \\frac{7}{25}.' },
+      { kind: 'fill-frac', prompt: 'Simplify \\frac{0.3 \\times 1.3}{1.8}', answer: '13/60', solution: '\\frac{0.39}{1.8} = \\frac{39}{180} = \\frac{13}{60}.' },
     ],
   },
+
+  // ───────────────────── Lesson 7: Word problems with fractions (Ex 5.6) ─
   {
     id: 'L7',
-    title: 'Lesson 7 · Fractions ↔ decimals ↔ percentages (Exercise 5.7)',
+    title: 'Lesson 7 · Fraction word problems (Exercise 5.6)',
+    teach: {
+      heading: 'Strategy for fraction word problems',
+      body: [
+        'Translate the words into a fraction equation. Read carefully — the SAME total can be the "whole" for several different fractions in one problem.',
+        '"\\frac{a}{b} of N" means \\frac{a}{b} \\times N.',
+        '"What fraction of N is M?" → \\frac{M}{N}, then simplify.',
+        '"How much is left?" → subtract from the whole (1 if working in fractions).',
+        'Always check units agree and simplify at the end.',
+      ],
+      example: '\\frac{2}{3} of 600 students wear glasses → \\frac{2}{3} \\times 600 = 400 wear glasses; 200 do not.',
+    },
+    questions: [
+      { kind: 'fill-num', prompt: 'A school has 600 students. \\frac{2}{3} wear glasses. How many WEAR glasses?', answer: 400,
+        solution: '\\frac{2}{3} \\times 600 = 400.' },
+      { kind: 'fill-num', prompt: 'Same school. How many do NOT wear glasses?', answer: 200,
+        solution: '600 - 400 = 200, or \\frac{1}{3} \\times 600 = 200.' },
+      { kind: 'mcq', prompt: '\\frac{2}{5} of a school is 360 students. What is \\frac{1}{6} of the total?',
+        options: ['150', '60', '90', '120'], correct: 0,
+        solution: 'Total = 360 \\div \\frac{2}{5} = 360 \\times \\frac{5}{2} = 900. \\frac{1}{6} \\times 900 = 150.' },
+      { kind: 'fill-num', prompt: '\\frac{2}{3} of the people at an auction bought something. There are 120 people. How many bought?', answer: 80,
+        solution: '\\frac{2}{3} \\times 120 = 80.' },
+      { kind: 'mcq', prompt: 'An essay has 420 sentences. \\frac{1}{12} contain typing errors. Write the fraction of error-free sentences in simplest form.',
+        options: ['\\frac{11}{12}', '\\frac{1}{11}', '\\frac{12}{11}', '\\frac{420}{11}'], correct: 0,
+        solution: '1 - \\frac{1}{12} = \\frac{11}{12}.' },
+      { kind: 'fill-num', prompt: '28 is \\frac{2}{3} of what number?', answer: 42,
+        solution: '28 \\div \\frac{2}{3} = 28 \\times \\frac{3}{2} = 42.' },
+      { kind: 'fill-num', prompt: '\\frac{3}{5} of the 250 people in a theatre buy a snack at the interval. How many buy snacks?', answer: 150,
+        solution: '\\frac{3}{5} \\times 250 = 150.' },
+      { kind: 'mcq', prompt: 'Asma needs $\\$12$. Asma saves \\frac{2}{3} of the total, Bashir saves \\frac{2}{9}, and Candice saves \\frac{1}{18}. What fraction of the cost is left to pay?',
+        options: ['\\frac{1}{18}', '\\frac{1}{9}', '\\frac{2}{18}', '\\frac{1}{6}'], correct: 0,
+        solution: 'LCM 18: \\frac{12+4+1}{18} = \\frac{17}{18}. Left = 1 - \\frac{17}{18} = \\frac{1}{18}.' },
+      { kind: 'fill-num', prompt: 'A chef needs 6\\frac{1}{2} cups of flour. They have 2\\frac{1}{4} cups already. How many more cups do they need? (Answer as a decimal.)', answer: 4.25, tol: 0.01,
+        solution: '6.5 - 2.25 = 4.25 cups, i.e. 4\\frac{1}{4}.' },
+    ],
+  },
+
+  // ───────────────────── Lesson 8: % ↔ fraction ↔ decimal (Ex 5.7) ───────
+  {
+    id: 'L8',
+    title: 'Lesson 8 · Percent ↔ fraction ↔ decimal (Exercise 5.7)',
     teach: {
       heading: 'Converting between the three forms',
       body: [
-        'Percent means "out of 100". So 45% = 45/100 = 0.45.',
-        'Percentage → decimal: divide by 100 (move the decimal 2 places left). 7% = 0.07.',
-        'Percentage → fraction: write over 100 and simplify. 30% = 30/100 = 3/10.',
-        'Fraction → percentage: multiply by 100 (or convert to a fraction with denominator 100).',
-        'Decimal → percentage: multiply by 100 (move decimal 2 places right). 0.625 = 62.5%.',
+        'Percent means "out of 100". So 45% = \\frac{45}{100} = 0.45.',
+        '% → decimal: divide by 100 (decimal moves 2 places left). 7% = 0.07.',
+        '% → fraction: write over 100 and simplify. 30% = \\frac{30}{100} = \\frac{3}{10}.',
+        'Fraction → %: multiply by 100, OR rewrite with denominator 100.',
+        'Decimal → %: multiply by 100. 0.625 = 62.5%.',
       ],
-      example: '3.5% as a fraction: 3.5/100 = 35/1000 = 7/200. As a decimal: 0.035.',
+      example: '3.5% as a fraction: \\frac{3.5}{100} = \\frac{35}{1000} = \\frac{7}{200}.',
     },
-    qFormat: 'For percentage answers type just the number (no % sign needed). For fractions use "a/b". For decimals just type the number.',
     questions: [
-      { kind: 'num', prompt: 'Convert 25% to a decimal.', answer: 0.25, solution: '25 ÷ 100 = 0.25.' },
-      { kind: 'num', prompt: 'Convert 7% to a decimal.', answer: 0.07, solution: '7 ÷ 100 = 0.07.' },
-      { kind: 'frac', prompt: 'Convert 30% to a fraction in simplest form.', answer: '3/10', solution: '30/100 = 3/10.' },
-      { kind: 'frac', prompt: 'Convert 25% to a fraction in simplest form.', answer: '1/4', solution: '25/100 = 1/4.' },
-      { kind: 'frac', prompt: 'Convert 3.5% to a fraction in simplest form.', answer: '7/200', solution: '3.5/100 = 35/1000 = 7/200.' },
-      { kind: 'num', prompt: 'Express 1/20 as a percentage.', answer: 5, solution: '1/20 = 5/100 = 5%.' },
-      { kind: 'num', prompt: 'Express 1/8 as a percentage.', answer: 12.5, solution: '1/8 = 12.5/100 = 12.5%.' },
-      { kind: 'num', prompt: 'Express 3/40 as a percentage.', answer: 7.5, solution: '3/40 × 100 = 7.5%.' },
-      { kind: 'num', prompt: 'Express 8/15 as a percentage (1 d.p.).', answer: 53.3, tol: 0.1, solution: '8/15 × 100 ≈ 53.3%.' },
-      { kind: 'num', prompt: 'Express 0.625 as a percentage.', answer: 62.5, solution: '0.625 × 100 = 62.5%.' },
-      { kind: 'num', prompt: 'Convert 70% to a decimal.', answer: 0.7, solution: '70 ÷ 100 = 0.70.' },
-      { kind: 'num', prompt: 'Convert 117.5% to a decimal.', answer: 1.175, solution: '117.5 ÷ 100 = 1.175.' },
+      { kind: 'mcq', prompt: 'Convert 25% to a decimal.',
+        options: ['0.25', '0.025', '2.5', '25'], correct: 0, solution: '25 \\div 100.' },
+      { kind: 'mcq', prompt: 'Convert 7% to a decimal.',
+        options: ['0.07', '0.7', '7.0', '0.007'], correct: 0, solution: '7 \\div 100.' },
+      { kind: 'fill-frac', prompt: 'Convert 30% to a fraction in simplest form.', answer: '3/10',
+        solution: '\\frac{30}{100} = \\frac{3}{10}.' },
+      { kind: 'fill-frac', prompt: 'Convert 25% to a fraction in simplest form.', answer: '1/4',
+        solution: '\\frac{25}{100} = \\frac{1}{4}.' },
+      { kind: 'fill-frac', prompt: 'Convert 3.5% to a fraction in simplest form.', answer: '7/200',
+        solution: '\\frac{3.5}{100} = \\frac{35}{1000} = \\frac{7}{200}.' },
+      { kind: 'fill-num', prompt: 'Express \\frac{1}{20} as a percentage.', answer: 5, solution: '\\frac{1}{20} = \\frac{5}{100} = 5\\%.' },
+      { kind: 'fill-num', prompt: 'Express \\frac{1}{8} as a percentage.', answer: 12.5, solution: '\\frac{1}{8} = 0.125 = 12.5\\%.' },
+      { kind: 'fill-num', prompt: 'Express \\frac{3}{40} as a percentage.', answer: 7.5, solution: '\\frac{3}{40} \\times 100 = 7.5\\%.' },
+      { kind: 'fill-num', prompt: 'Express \\frac{8}{15} as a percentage (1 d.p.).', answer: 53.3, tol: 0.1, solution: '\\frac{8}{15} \\times 100 \\approx 53.3\\%.' },
+      { kind: 'fill-num', prompt: 'Express 0.625 as a percentage.', answer: 62.5, solution: '0.625 \\times 100.' },
+      { kind: 'mcq', prompt: 'Convert 70% to a decimal.',
+        options: ['0.7', '0.07', '7.0', '70.0'], correct: 0, solution: '70 \\div 100.' },
+      { kind: 'fill-num', prompt: 'Convert 117.5% to a decimal.', answer: 1.175, solution: '117.5 \\div 100.' },
+      { kind: 'fill-num', prompt: 'Convert 215% to a decimal.', answer: 2.15, solution: '215 \\div 100.' },
+      { kind: 'mcq', prompt: 'Express \\frac{17}{20} as a percentage.',
+        options: ['85%', '17%', '20%', '170%'], correct: 0, solution: '\\frac{17}{20} = \\frac{85}{100}.' },
     ],
   },
+
+  // ───────────────────── Lesson 9: % of an amount (Ex 5.8) ────────────────
   {
-    id: 'L8',
-    title: 'Lesson 8 · Percentage of an amount (Exercise 5.8)',
+    id: 'L9',
+    title: 'Lesson 9 · Percentage of an amount (Exercise 5.8)',
     teach: {
       heading: 'Finding x% of a number',
       body: [
         'Convert the percentage to a decimal (or fraction), then multiply.',
-        '5% of 300 → 0.05 × 300 = 15. OR 5/100 × 300 = 15.',
-        'Quick mental tricks: 10% = ÷10. 1% = ÷100. 50% = ÷2. 25% = ÷4.',
+        '5% of 300 → 0.05 \\times 300 = 15. OR \\frac{5}{100} \\times 300 = 15.',
+        'Quick: 10% = ÷10. 1% = ÷100. 50% = ÷2. 25% = ÷4.',
+        'For tricky ones, find 1% first, then scale.',
       ],
-      example: '20% of 60 → 0.20 × 60 = 12.',
+      example: '7.5% of 1000 = 0.075 \\times 1000 = 75.',
     },
-    qFormat: 'Type a number.',
     questions: [
-      { kind: 'num', prompt: '5% of 300', answer: 15, solution: '0.05 × 300 = 15.' },
-      { kind: 'num', prompt: '20% of 60', answer: 12, solution: '0.20 × 60 = 12.' },
-      { kind: 'num', prompt: '75% of 180', answer: 135, solution: '0.75 × 180 = 135.' },
-      { kind: 'num', prompt: '120% of 300', answer: 360, solution: '1.20 × 300 = 360.' },
-      { kind: 'num', prompt: '7.5% of 1000', answer: 75, solution: '0.075 × 1000 = 75.' },
-      { kind: 'num', prompt: '90% of 50 kg (in kg)', answer: 45, solution: '0.9 × 50 = 45.' },
-      { kind: 'num', prompt: '2.4% of 3 metres (in metres)', answer: 0.072, solution: '0.024 × 3 = 0.072.' },
-      { kind: 'num', prompt: 'A T-shirt costs $12 and has a 10% sales tax. How much tax (in $)?', answer: 1.20, solution: '0.10 × 12 = $1.20.' },
+      { kind: 'mcq', prompt: '5% of 300',
+        options: ['15', '5', '60', '30'], correct: 0, solution: '0.05 \\times 300 = 15.' },
+      { kind: 'mcq', prompt: '20% of 60',
+        options: ['12', '6', '20', '15'], correct: 0, solution: '0.20 \\times 60.' },
+      { kind: 'mcq', prompt: '75% of 180',
+        options: ['135', '120', '150', '90'], correct: 0, solution: '0.75 \\times 180 = 135.' },
+      { kind: 'fill-num', prompt: '120% of 300', answer: 360, solution: '1.20 \\times 300.' },
+      { kind: 'fill-num', prompt: '7.5% of 1000', answer: 75, solution: '0.075 \\times 1000.' },
+      { kind: 'fill-num', prompt: '90% of 50 (kg)', answer: 45, solution: '0.9 \\times 50.' },
+      { kind: 'fill-num', prompt: '2.4% of 3 (metres)', answer: 0.072, solution: '0.024 \\times 3.' },
+      { kind: 'fill-num', prompt: 'A T-shirt costs $\\$12$ and has 10% sales tax. Tax in $\\$$?', answer: 1.20, solution: '0.10 \\times 12.' },
+      { kind: 'mcq', prompt: 'A salesperson earns 4% commission on a $\\$2{,}500$ sale. Commission?',
+        options: ['\\$100', '\\$25', '\\$250', '\\$10'], correct: 0, solution: '0.04 \\times 2500 = 100.' },
+      { kind: 'fill-num', prompt: 'Find 12.5% of 64', answer: 8, solution: '0.125 \\times 64.' },
     ],
   },
-  {
-    id: 'L9',
-    title: 'Lesson 9 · One number as a percentage of another',
-    teach: {
-      heading: 'Expressing one quantity as a % of another',
-      body: [
-        'Step: write the first number as a fraction OF the second number, then multiply by 100.',
-        'Percentage = (part ÷ whole) × 100.',
-        'Always make sure both numbers are in the same units before dividing.',
-      ],
-      example: '16 as a percentage of 48 → 16/48 × 100 = 33.33% (2 d.p.).',
-    },
-    qFormat: 'Answer in % (round to 1 d.p. unless stated). Just type the number.',
-    questions: [
-      { kind: 'num', prompt: '16 as a percentage of 48 (1 d.p.)', answer: 33.3, tol: 0.1, solution: '16/48 × 100 ≈ 33.3%.' },
-      { kind: 'num', prompt: '15 as a percentage of 75', answer: 20, solution: '15/75 × 100 = 20%.' },
-      { kind: 'num', prompt: '18 as a percentage of 23 (2 d.p.)', answer: 78.26, tol: 0.05, solution: '18/23 × 100 ≈ 78.26%.' },
-      { kind: 'num', prompt: '24 grams as a percentage of 15 grams', answer: 160, solution: '24/15 × 100 = 160%.' },
-      { kind: 'num', prompt: '14 as a percentage of 35', answer: 40, solution: '14/35 × 100 = 40%.' },
-      { kind: 'num', prompt: '1.4 as a percentage of 63 (2 d.p.)', answer: 2.22, tol: 0.05, solution: '1.4/63 × 100 ≈ 2.22%.' },
-      { kind: 'num', prompt: '36 people live in a block; 28 of them ride bicycles. What percentage ride? (1 d.p.)', answer: 77.8, tol: 0.1, solution: '28/36 × 100 ≈ 77.8%.' },
-    ],
-  },
+
+  // ───────────────────── Lesson 10: One number as % of another ────────────
   {
     id: 'L10',
-    title: 'Lesson 10 · Percentage increase / decrease (Exercise 5.9)',
+    title: 'Lesson 10 · Expressing one number as a percentage of another',
+    teach: {
+      heading: 'Percentage = (part ÷ whole) × 100',
+      body: [
+        'Write the first number as a FRACTION of the second, then multiply by 100.',
+        'Both numbers must be in the SAME units before dividing.',
+        'If part > whole, the answer is over 100% — that\'s fine.',
+      ],
+      example: '16 as a percentage of 48 → \\frac{16}{48} \\times 100 = 33.3% (1 d.p.).',
+    },
+    questions: [
+      { kind: 'fill-num', prompt: '16 as a percentage of 48 (1 d.p.)', answer: 33.3, tol: 0.1, solution: '\\frac{16}{48} \\times 100.' },
+      { kind: 'fill-num', prompt: '15 as a percentage of 75', answer: 20, solution: '\\frac{15}{75} \\times 100.' },
+      { kind: 'fill-num', prompt: '18 as a percentage of 23 (2 d.p.)', answer: 78.26, tol: 0.05, solution: '\\frac{18}{23} \\times 100 \\approx 78.26\\%.' },
+      { kind: 'mcq', prompt: '24 grams as a percentage of 15 grams',
+        options: ['160%', '60%', '15%', '40%'], correct: 0, solution: '\\frac{24}{15} \\times 100 = 160\\%.' },
+      { kind: 'fill-num', prompt: '14 as a percentage of 35', answer: 40, solution: '\\frac{14}{35} \\times 100.' },
+      { kind: 'fill-num', prompt: '1.4 as a percentage of 63 (2 d.p.)', answer: 2.22, tol: 0.05, solution: '\\frac{1.4}{63} \\times 100.' },
+      { kind: 'fill-num', prompt: '36 people live in a block; 28 ride bicycles. % who ride? (1 d.p.)', answer: 77.8, tol: 0.1, solution: '\\frac{28}{36} \\times 100 \\approx 77.8\\%.' },
+      { kind: 'mcq', prompt: 'A factory makes 1{,}600 batteries; 2.4% are not up to standard. How many are NOT up to standard?',
+        options: ['38', '24', '40', '160'], correct: 0,
+        solution: '0.024 \\times 1600 = 38.4 → effectively 38 batteries (rounded).' },
+    ],
+  },
+
+  // ───────────────────── Lesson 11: % increase / decrease (Ex 5.9) ────────
+  {
+    id: 'L11',
+    title: 'Lesson 11 · Percentage increase and decrease (Exercise 5.9)',
     teach: {
       heading: 'Percentage change',
       body: [
-        'Always compare the CHANGE to the ORIGINAL value, never to the new value.',
-        '% change = (change ÷ original) × 100.',
-        'If the new value is bigger → % increase. If smaller → % decrease.',
-        'Step 1: change = new − original (use absolute value for the formula).',
-        'Step 2: divide by the ORIGINAL.',
-        'Step 3: multiply by 100.',
+        'Compare the CHANGE to the ORIGINAL — never to the new value.',
+        '\\% change = \\frac{change}{original} \\times 100.',
+        'New > original → % increase. New < original → % decrease.',
       ],
-      example: 'House goes from $120,000 to $124,800. Change = $4,800. 4800/120000 × 100 = 4% increase.',
+      example: 'House: $\\$120{,}000 \\to \\$124{,}800$. Change = $\\$4{,}800$. \\frac{4800}{120000} \\times 100 = 4\\% increase.',
     },
-    qFormat: 'Type the % as a number (no % sign). For decreases, type a positive number.',
     questions: [
-      { kind: 'num', prompt: 'A bike\'s price rises from $12 to $15. % increase?', answer: 25, solution: 'change = 3, 3/12 × 100 = 25%.' },
-      { kind: 'num', prompt: 'Price rises from $120,000 to $124,800. % increase?', answer: 4, solution: '4800/120000 × 100 = 4%.' },
-      { kind: 'num', prompt: 'A house value drops from $300,000 to $270,000. % decrease?', answer: 10, solution: '30000/300000 × 100 = 10%.' },
-      { kind: 'num', prompt: 'A bag costs $50, sells at $35. % decrease?', answer: 30, solution: '15/50 × 100 = 30%.' },
-      { kind: 'num', prompt: 'Population grows from 4000 to 4600. % increase?', answer: 15, solution: '600/4000 × 100 = 15%.' },
-      { kind: 'num', prompt: 'A salary changes from $46,875 to $42,187.50. % decrease (1 d.p.)?', answer: 10, tol: 0.1, solution: '4687.50/46875 × 100 = 10%.' },
+      { kind: 'mcq', prompt: 'Bike\'s price: $\\$12 \\to \\$15$. % increase?',
+        options: ['25%', '20%', '3%', '30%'], correct: 0, solution: '\\frac{3}{12} \\times 100.' },
+      { kind: 'fill-num', prompt: 'House: $\\$120{,}000 \\to \\$124{,}800$. % increase?', answer: 4, solution: '\\frac{4800}{120000} \\times 100.' },
+      { kind: 'fill-num', prompt: 'House value drops from $\\$300{,}000 \\to \\$270{,}000$. % decrease?', answer: 10, solution: '\\frac{30000}{300000} \\times 100.' },
+      { kind: 'mcq', prompt: 'Bag: $\\$50 \\to \\$35$. % decrease?',
+        options: ['30%', '15%', '20%', '35%'], correct: 0, solution: '\\frac{15}{50} \\times 100.' },
+      { kind: 'fill-num', prompt: 'Population grows from 4{,}000 to 4{,}600. % increase?', answer: 15, solution: '\\frac{600}{4000} \\times 100.' },
+      { kind: 'fill-num', prompt: 'Salary: $\\$46{,}875 \\to \\$42{,}187.50$. % decrease (1 d.p.)?', answer: 10, tol: 0.1, solution: '\\frac{4687.50}{46875} \\times 100.' },
+      { kind: 'mcq', prompt: 'Population of Louisiana: 4{,}468{,}976 (2010) → 4{,}287{,}768 (2020). % decrease (2 d.p.)?',
+        options: ['4.05%', '4.50%', '5.00%', '0.45%'], correct: 0,
+        solution: '\\frac{181208}{4468976} \\times 100 \\approx 4.05\\%.' },
     ],
   },
-  {
-    id: 'L11',
-    title: 'Lesson 11 · The multiplier method (Exercise 5.10)',
-    teach: {
-      heading: 'Increasing or decreasing by a given percentage — fast',
-      body: [
-        'Instead of finding the change and adding/subtracting, use a single MULTIPLIER.',
-        'To increase by p%: multiplier = 1 + p/100. (e.g., +15% → ×1.15)',
-        'To decrease by p%: multiplier = 1 − p/100. (e.g., −25% → ×0.75)',
-        'Then: new value = original × multiplier. Done in one step.',
-        'Why it works: 100% (the original) plus the change percentage = the new value as a percentage of the old.',
-      ],
-      example: 'Increase 56 by 15% → 56 × 1.15 = 64.4. Decrease 40 by 30% → 40 × 0.70 = 28.',
-    },
-    qFormat: 'Type the new value (a number).',
-    questions: [
-      { kind: 'num', prompt: 'Increase 40 by 10%', answer: 44, solution: '40 × 1.10 = 44.' },
-      { kind: 'num', prompt: 'Increase 40 by 15%', answer: 46, solution: '40 × 1.15 = 46.' },
-      { kind: 'num', prompt: 'Increase 40 by 25%', answer: 50, solution: '40 × 1.25 = 50.' },
-      { kind: 'num', prompt: 'Increase 40 by 4%', answer: 41.6, solution: '40 × 1.04 = 41.6.' },
-      { kind: 'num', prompt: 'Increase 53 by 50%', answer: 79.5, solution: '53 × 1.50 = 79.5.' },
-      { kind: 'num', prompt: 'Decrease 124 by 10%', answer: 111.6, solution: '124 × 0.90 = 111.6.' },
-      { kind: 'num', prompt: 'Decrease 124 by 50%', answer: 62, solution: '124 × 0.50 = 62.' },
-      { kind: 'num', prompt: 'Decrease 36.2 by 90%', answer: 3.62, solution: '36.2 × 0.10 = 3.62.' },
-      { kind: 'num', prompt: 'A T-shirt was $120; a 15% discount is applied. New price?', answer: 102, solution: '120 × 0.85 = 102.' },
-      { kind: 'num', prompt: 'A jacket is reduced by 10% from $108. New price?', answer: 97.20, solution: '108 × 0.90 = 97.20.' },
-      { kind: 'num', prompt: 'Increase 56 by 4%', answer: 58.24, solution: '56 × 1.04 = 58.24.' },
-      { kind: 'num', prompt: 'Increase 56 by 15%', answer: 64.4, solution: '56 × 1.15 = 64.4.' },
-    ],
-  },
+
+  // ───────────────────── Lesson 12: Multiplier method (Ex 5.10) ───────────
   {
     id: 'L12',
-    title: 'Lesson 12 · Reverse percentages (Exercise 5.11)',
+    title: 'Lesson 12 · The multiplier method (Exercise 5.10)',
     teach: {
-      heading: 'Going BACKWARDS from the new value to the original',
+      heading: 'Increase or decrease by p% in ONE multiplication',
       body: [
-        'Reverse percentages: you know the value AFTER an increase or decrease, and you want the ORIGINAL.',
-        'The trick: figure out the multiplier that produced the change, then DIVIDE the new value by it.',
-        'A jacket was reduced by 10% to $108 → multiplier was 0.90 (kept 90%). Original = 108 / 0.90 = $120.',
-        'A bill includes 20% tax and totals $144 → multiplier was 1.20. Original = 144 / 1.20 = $120.',
-        'Common pitfall: you CANNOT just add the same percentage to the new price. (10% of $108 ≠ 10% of $120.)',
+        'Build a multiplier instead of computing the change separately.',
+        'Increase by p%: multiplier = 1 + \\frac{p}{100}. (+15% → ×1.15)',
+        'Decrease by p%: multiplier = 1 - \\frac{p}{100}. (−25% → ×0.75)',
+        'New value = original × multiplier. One step. Saves time and avoids errors when chaining changes.',
       ],
-      example: 'A laptop is on sale at $320, which is 80% of the original. Original = 320 / 0.80 = $400.',
+      example: 'Increase 56 by 15% → 56 \\times 1.15 = 64.4. Decrease 40 by 30% → 40 \\times 0.70 = 28.',
     },
-    qFormat: 'Type the original value (a number).',
     questions: [
-      { kind: 'num', prompt: 'A jacket on sale is reduced by 10% to $108. What was the original price?', answer: 120, solution: '108 / 0.90 = 120.' },
-      { kind: 'num', prompt: 'A laptop is selling for $320 after a 20% discount. Original price?', answer: 400, solution: '320 / 0.80 = 400.' },
-      { kind: 'num', prompt: '20% of an amount is 35. What is the amount?', answer: 175, solution: '35 / 0.20 = 175.' },
-      { kind: 'num', prompt: '12% of an amount is 787. The amount? (round to nearest integer)', answer: 6558, tol: 1, solution: '787 / 0.12 ≈ 6558.' },
-      { kind: 'num', prompt: '245 is 12.5% of an amount. The amount?', answer: 1960, solution: '245 / 0.125 = 1960.' },
-      { kind: 'num', prompt: 'A hat on sale at 10% off costs $18. Original price?', answer: 20, solution: '18 / 0.90 = 20.' },
-      { kind: 'num', prompt: 'A 22% reduction makes the price $99. Original price (2 d.p.)?', answer: 126.92, tol: 0.05, solution: '99 / 0.78 ≈ 126.92.' },
+      { kind: 'mcq', prompt: 'Increase 40 by 10%',
+        options: ['44', '4', '40.1', '50'], correct: 0, solution: '40 \\times 1.10.' },
+      { kind: 'mcq', prompt: 'Increase 40 by 15%',
+        options: ['46', '55', '40.15', '6'], correct: 0, solution: '40 \\times 1.15.' },
+      { kind: 'fill-num', prompt: 'Increase 40 by 25%', answer: 50, solution: '40 \\times 1.25.' },
+      { kind: 'fill-num', prompt: 'Increase 40 by 4%', answer: 41.6, solution: '40 \\times 1.04.' },
+      { kind: 'fill-num', prompt: 'Increase 53 by 50%', answer: 79.5, solution: '53 \\times 1.50.' },
+      { kind: 'mcq', prompt: 'Decrease 124 by 10%',
+        options: ['111.6', '113.6', '12.4', '12'], correct: 0, solution: '124 \\times 0.90.' },
+      { kind: 'fill-num', prompt: 'Decrease 124 by 50%', answer: 62, solution: '124 \\times 0.50.' },
+      { kind: 'fill-num', prompt: 'Decrease 36.2 by 90%', answer: 3.62, solution: '36.2 \\times 0.10.' },
+      { kind: 'fill-num', prompt: 'A T-shirt was $\\$120$ with a 15% discount. New price?', answer: 102, solution: '120 \\times 0.85.' },
+      { kind: 'fill-num', prompt: 'A jacket reduced 10% from $\\$108$. New price?', answer: 97.20, solution: '108 \\times 0.90.' },
+      { kind: 'fill-num', prompt: 'Increase 56 by 4%', answer: 58.24, solution: '56 \\times 1.04.' },
+      { kind: 'fill-num', prompt: 'Increase 56 by 15%', answer: 64.4, solution: '56 \\times 1.15.' },
+      { kind: 'mcq', prompt: 'A village population of 153{,}000 dropped 17% after floods. New population?',
+        options: ['126{,}990', '130{,}050', '136{,}000', '125{,}000'], correct: 0,
+        solution: '153000 \\times 0.83 = 126990.' },
     ],
   },
+
+  // ───────────────────── Lesson 13: Reverse percentages (Ex 5.11) ─────────
   {
     id: 'L13',
-    title: 'Lesson 13 · Standard form basics (Exercise 5.12)',
+    title: 'Lesson 13 · Reverse percentages (Exercise 5.11)',
+    teach: {
+      heading: 'Going backwards from the new value to the ORIGINAL',
+      body: [
+        'You\'re given the value AFTER an increase or decrease, and you want the value BEFORE.',
+        'Identify the multiplier that was applied, then DIVIDE the new value by it.',
+        'After 10% off → multiplier was 0.90. After 20% tax → multiplier was 1.20.',
+        'TRAP: you cannot just add the same percentage back to the new value (10% of $108 ≠ 10% of the original).',
+      ],
+      example: 'A jacket at 10% off costs $\\$108$. Original = $\\$108 \\div 0.90 = \\$120$.',
+    },
+    questions: [
+      { kind: 'mcq', prompt: 'Jacket reduced 10% to $\\$108$. Original price?',
+        options: ['\\$120', '\\$118.80', '\\$130', '\\$97.20'], correct: 0, solution: '108 \\div 0.90.' },
+      { kind: 'fill-num', prompt: 'Laptop on 20% sale at $\\$320$. Original?', answer: 400, solution: '320 \\div 0.80.' },
+      { kind: 'fill-num', prompt: '20% of an amount is 35. The amount?', answer: 175, solution: '35 \\div 0.20.' },
+      { kind: 'fill-num', prompt: '12% of an amount is 787. The amount? (nearest integer)', answer: 6558, tol: 1, solution: '787 \\div 0.12 \\approx 6558.' },
+      { kind: 'fill-num', prompt: '245 is 12.5% of an amount. The amount?', answer: 1960, solution: '245 \\div 0.125.' },
+      { kind: 'mcq', prompt: 'A hat at 10% off costs $\\$18$. Original?',
+        options: ['\\$20', '\\$19.80', '\\$28', '\\$16.20'], correct: 0, solution: '18 \\div 0.90.' },
+      { kind: 'fill-num', prompt: 'A 22% reduction makes the price $\\$99$. Original (2 d.p.)?', answer: 126.92, tol: 0.05, solution: '99 \\div 0.78.' },
+      { kind: 'fill-num', prompt: '7 students were absent — that\'s 17.5% of the class. Class size?', answer: 40, solution: '7 \\div 0.175.' },
+      { kind: 'fill-num', prompt: 'A sale price is $\\$18$ after a 10% discount. What did the customer save?', answer: 2, solution: 'Original = 18 \\div 0.9 = 20; saved = 20 - 18 = 2.' },
+    ],
+  },
+
+  // ───────────────────── Lesson 14: % word problems ──────────────────────
+  {
+    id: 'L14',
+    title: 'Lesson 14 · Multi-step percentage word problems',
+    teach: {
+      heading: 'Strategies for harder percentage word problems',
+      body: [
+        'For multi-step problems, name what you know and what you want, THEN pick a tool: % of amount, % change, multiplier, or reverse %.',
+        'For "increase first, then decrease (or vice versa)" → multiply the multipliers in sequence.',
+        'For "what % does the change represent of the original?" → use \\frac{change}{original} \\times 100.',
+        'Watch units, signs, and whether the question asks for the new value or the change itself.',
+      ],
+      example: 'Suresh weighs 76 kg and loses 5% over 3 months. New weight = 76 \\times 0.95 = 72.2 kg.',
+    },
+    questions: [
+      { kind: 'fill-num', prompt: 'Shayam works 30 hrs/week. Hours rise 10% to earn extra. New hours?', answer: 33,
+        solution: '30 \\times 1.10 = 33.' },
+      { kind: 'fill-num', prompt: '12% sales tax is added to a $\\$30$ T-shirt. Total price?', answer: 33.60, solution: '30 \\times 1.12.' },
+      { kind: 'fill-num', prompt: 'Suresh weighs 76 kg, loses 5% over 3 months. New weight (kg)?', answer: 72.2, solution: '76 \\times 0.95.' },
+      { kind: 'fill-num', prompt: 'A theatre adds a 12% reduction in ticket prices. A $\\$50$ ticket now costs?', answer: 44, solution: '50 \\times 0.88.' },
+      { kind: 'mcq', prompt: 'In a first year, 21{,}300 people attend a theatre and this rises to a 23% increase in the second year. New attendance? (round to nearest 10)',
+        options: ['26{,}200', '21{,}500', '4{,}900', '17{,}300'], correct: 0,
+        solution: '21300 \\times 1.23 = 26199 ≈ 26{,}200.' },
+      { kind: 'mcq', prompt: 'The water in a pond evaporates at 12% per week. A pond starts with 185 litres. About how much is left after a week? (nearest litre)',
+        options: ['163', '173', '22', '170'], correct: 0,
+        solution: '185 \\times 0.88 = 162.8 ≈ 163.' },
+      { kind: 'mcq', prompt: 'A shop keeper raises prices by 22% before a sale. In the sale all items are reduced 22%. Net effect on price (closest)?',
+        options: ['Decreased by ~5%', 'Same', 'Increased by ~5%', 'Increased by 22%'], correct: 0,
+        solution: '1.22 \\times 0.78 = 0.9516 → about 4.84% lower than the start.' },
+      { kind: 'fill-num', prompt: 'A car worth $\\$24{,}000$ depreciates 20% in year one and 15% in year two. Value after 2 years (nearest $\\$$)?', answer: 16320,
+        solution: '24000 \\times 0.80 \\times 0.85 = 24000 \\times 0.68 = 16{,}320.' },
+    ],
+  },
+
+  // ───────────────────── Lesson 15: Standard form basics (Ex 5.12) ────────
+  {
+    id: 'L15',
+    title: 'Lesson 15 · Standard form basics (Exercise 5.12)',
     teach: {
       heading: 'Writing very large or very small numbers compactly',
       body: [
-        'Standard form (a.k.a. scientific notation) writes numbers as a × 10ⁿ where 1 ≤ |a| < 10 and n is an integer.',
-        'For LARGE numbers: count how many places you must shift the decimal LEFT to get a value between 1 and 10. That count is a positive n. e.g. 320,000 → 3.2 × 10⁵.',
-        'For SMALL numbers: count how many places to shift the decimal RIGHT. That count is a negative n. e.g. 0.00034 → 3.4 × 10⁻⁴.',
-        'To convert BACK: positive n → move decimal n places right (large number); negative n → move |n| places left (small number).',
+        'Standard form (a.k.a. scientific notation) writes a number as a \\times 10^n where 1 \\le |a| < 10 and n is an integer.',
+        'LARGE number → count how many places to shift the decimal LEFT to get 1 ≤ a < 10. That count is positive n. 320{,}000 = 3.2 \\times 10^5.',
+        'SMALL number → count how many places RIGHT. That count is negative n. 0.00034 = 3.4 \\times 10^-4.',
+        'To convert BACK: positive n → move the decimal n places right; negative n → move |n| places left.',
       ],
-      example: '0.00000034 → 3.4 × 10⁻⁷.   45,000,000,000 → 4.5 × 10¹⁰.',
+      example: '0.00000034 = 3.4 \\times 10^-7. 45{,}000{,}000{,}000 = 4.5 \\times 10^10.',
     },
-    qFormat: 'Type your answer like "3.4 x 10^-7" or "3.4e-7" (both work).',
+    qFormat: 'Type fill-in answers like "3.4 x 10^-7" or "3.4e-7".',
     questions: [
-      { kind: 'std', prompt: 'Write 380 in standard form.', answer: '3.8x10^2', solution: 'Move decimal 2 places left → 3.8 × 10².' },
-      { kind: 'std', prompt: 'Write 4,200,000 in standard form.', answer: '4.2x10^6', solution: 'Move 6 places left → 4.2 × 10⁶.' },
-      { kind: 'std', prompt: 'Write 45,600,000,000 in standard form.', answer: '4.56x10^10', solution: '4.56 × 10¹⁰.' },
-      { kind: 'std', prompt: 'Write 65,400,000,000 in standard form.', answer: '6.54x10^10', solution: '6.54 × 10¹⁰.' },
-      { kind: 'std', prompt: 'Write 20 in standard form.', answer: '2x10^1', solution: '2 × 10¹.' },
-      { kind: 'std', prompt: 'Write 5 in standard form.', answer: '5x10^0', solution: '5 × 10⁰ = 5.' },
-      { kind: 'std', prompt: 'Write 10.3 in standard form.', answer: '1.03x10^1', solution: '1.03 × 10¹.' },
-      { kind: 'std', prompt: 'Write 0.004 in standard form.', answer: '4x10^-3', solution: '4 × 10⁻³.' },
-      { kind: 'std', prompt: 'Write 0.0005 in standard form.', answer: '5x10^-4', solution: '5 × 10⁻⁴.' },
-      { kind: 'std', prompt: 'Write 0.000032 in standard form.', answer: '3.2x10^-5', solution: '3.2 × 10⁻⁵.' },
-      { kind: 'std', prompt: 'Write 0.000564 in standard form.', answer: '5.64x10^-4', solution: '5.64 × 10⁻⁴.' },
-      { kind: 'num', prompt: 'Convert 4 × 10⁻³ to ordinary form.', answer: 0.004, solution: 'Move 3 places left.' },
-      { kind: 'num', prompt: 'Convert 1.05 × 10¹ to ordinary form.', answer: 10.5, solution: 'Move 1 place right.' },
-      { kind: 'num', prompt: 'Convert 8.8 × 10⁻⁵ to ordinary form.', answer: 0.000088, tol: 1e-7, solution: 'Move 5 places left.' },
+      { kind: 'mcq', prompt: 'Write 380 in standard form.',
+        options: ['3.8 \\times 10^2', '38 \\times 10^1', '0.38 \\times 10^3', '3.8 \\times 10^3'], correct: 0,
+        solution: 'Move decimal 2 places left.' },
+      { kind: 'mcq', prompt: 'Write 4{,}200{,}000 in standard form.',
+        options: ['4.2 \\times 10^6', '4.2 \\times 10^7', '42 \\times 10^5', '4.2 \\times 10^5'], correct: 0,
+        solution: '6 places left.' },
+      { kind: 'fill-std', prompt: 'Write 45{,}600{,}000{,}000 in standard form.', answer: '4.56x10^10', solution: '10 places left.' },
+      { kind: 'fill-std', prompt: 'Write 65{,}400{,}000{,}000 in standard form.', answer: '6.54x10^10', solution: '10 places left.' },
+      { kind: 'fill-std', prompt: 'Write 20 in standard form.', answer: '2x10^1', solution: '2 \\times 10^1.' },
+      { kind: 'fill-std', prompt: 'Write 5 in standard form.', answer: '5x10^0', solution: '5 \\times 10^0 = 5.' },
+      { kind: 'fill-std', prompt: 'Write 10.3 in standard form.', answer: '1.03x10^1', solution: '1 place left.' },
+      { kind: 'mcq', prompt: 'Write 0.004 in standard form.',
+        options: ['4 \\times 10^-3', '4 \\times 10^3', '4 \\times 10^-2', '0.4 \\times 10^-2'], correct: 0,
+        solution: '3 places right.' },
+      { kind: 'fill-std', prompt: 'Write 0.0005 in standard form.', answer: '5x10^-4', solution: '4 places right.' },
+      { kind: 'fill-std', prompt: 'Write 0.000032 in standard form.', answer: '3.2x10^-5', solution: '5 places right.' },
+      { kind: 'fill-std', prompt: 'Write 0.000564 in standard form.', answer: '5.64x10^-4', solution: '4 places right.' },
+      { kind: 'fill-num', prompt: 'Convert 4 \\times 10^-3 to ordinary form.', answer: 0.004, solution: 'Move decimal 3 left.' },
+      { kind: 'fill-num', prompt: 'Convert 1.05 \\times 10^1 to ordinary form.', answer: 10.5, solution: 'Move decimal 1 right.' },
+      { kind: 'fill-num', prompt: 'Convert 8.8 \\times 10^-5 to ordinary form.', answer: 0.000088, tol: 1e-7, solution: 'Move decimal 5 left.' },
     ],
   },
+
+  // ───────────────────── Lesson 16: × and ÷ in standard form (Ex 5.14) ────
   {
-    id: 'L14',
-    title: 'Lesson 14 · Multiplying & dividing in standard form (Exercise 5.14)',
+    id: 'L16',
+    title: 'Lesson 16 · Multiplying & dividing in standard form (Exercise 5.14)',
     teach: {
-      heading: 'Standard form arithmetic — multiply and divide',
+      heading: 'Standard-form arithmetic — multiply and divide',
       body: [
-        'When multiplying numbers in standard form: multiply the a-parts, ADD the indices.',
-        '(a × 10ᵐ) × (b × 10ⁿ) = (a × b) × 10^(m+n).',
-        'When dividing: divide the a-parts, SUBTRACT the indices.',
-        '(a × 10ᵐ) ÷ (b × 10ⁿ) = (a ÷ b) × 10^(m−n).',
-        'Adjust at the end so the answer is in proper standard form (1 ≤ a < 10).',
+        'Multiplying: multiply the a-parts, ADD the indices. (a \\times 10^m) \\times (b \\times 10^n) = (a \\times b) \\times 10^{m+n}.',
+        'Dividing: divide the a-parts, SUBTRACT the indices. (a \\times 10^m) \\div (b \\times 10^n) = \\frac{a}{b} \\times 10^{m-n}.',
+        'Always tidy at the end so that 1 ≤ a-part < 10. If the a-part is ≥ 10, divide by 10 and add 1 to n. If it\'s < 1, multiply by 10 and subtract 1 from n.',
       ],
-      example: '(3 × 10⁵) × (2 × 10³) = 6 × 10⁸.   (8 × 10⁻³) ÷ (4 × 10²) = 2 × 10⁻⁵.',
+      example: '(3 \\times 10^5) \\times (2 \\times 10^3) = 6 \\times 10^8. (8 \\times 10^-3) \\div (4 \\times 10^2) = 2 \\times 10^-5.',
     },
-    qFormat: 'Answer in standard form like "6 x 10^8".',
     questions: [
-      { kind: 'std', prompt: '(3 × 10⁵) × (2 × 10³)', answer: '6x10^8', solution: '3×2=6, 5+3=8.' },
-      { kind: 'std', prompt: '(2 × 10⁹) × (8 × 10⁻³)', answer: '1.6x10^7', solution: '16 × 10⁶ = 1.6 × 10⁷.' },
-      { kind: 'std', prompt: '(2.8 × 10⁶) ÷ (1.4 × 10²)', answer: '2x10^4', solution: '2.8/1.4 = 2; 6−2=4.' },
-      { kind: 'std', prompt: '(2 × 10⁵) × (4 × 10⁷)', answer: '8x10^12', solution: '2×4=8, 5+7=12.' },
-      { kind: 'std', prompt: '(8 × 10²) × (5 × 10⁻⁴)', answer: '4x10^-1', solution: '40 × 10⁻² = 4 × 10⁻¹.' },
-      { kind: 'std', prompt: '(1.6 × 10⁻³) × (4 × 10⁻⁵)', answer: '6.4x10^-8', solution: '1.6×4=6.4, −3+(−5)=−8.' },
-      { kind: 'std', prompt: '(4 × 10⁹) ÷ (2 × 10⁻⁵)', answer: '2x10^14', solution: '4/2=2, 9−(−5)=14.' },
-      { kind: 'std', prompt: '(9 × 10⁵) ÷ (3 × 10²)', answer: '3x10^3', solution: '9/3=3, 5−2=3.' },
+      { kind: 'mcq', prompt: '(3 \\times 10^5) \\times (2 \\times 10^3)',
+        options: ['6 \\times 10^8', '6 \\times 10^{15}', '5 \\times 10^8', '6 \\times 10^2'], correct: 0,
+        solution: '3 \\times 2 = 6, 5+3 = 8.' },
+      { kind: 'fill-std', prompt: '(2 \\times 10^9) \\times (8 \\times 10^-3)', answer: '1.6x10^7',
+        solution: '16 \\times 10^6 = 1.6 \\times 10^7.' },
+      { kind: 'mcq', prompt: '(2.8 \\times 10^6) \\div (1.4 \\times 10^2)',
+        options: ['2 \\times 10^4', '2 \\times 10^3', '4 \\times 10^4', '0.2 \\times 10^4'], correct: 0,
+        solution: '2.8/1.4 = 2; 6 - 2 = 4.' },
+      { kind: 'fill-std', prompt: '(2 \\times 10^5) \\times (4 \\times 10^7)', answer: '8x10^12', solution: '8 \\times 10^{12}.' },
+      { kind: 'fill-std', prompt: '(8 \\times 10^2) \\times (5 \\times 10^-4)', answer: '4x10^-1', solution: '40 \\times 10^-2 = 4 \\times 10^-1.' },
+      { kind: 'fill-std', prompt: '(1.6 \\times 10^-3) \\times (4 \\times 10^-5)', answer: '6.4x10^-8', solution: '1.6 \\times 4 = 6.4, -3+(-5) = -8.' },
+      { kind: 'fill-std', prompt: '(4 \\times 10^9) \\div (2 \\times 10^-5)', answer: '2x10^14', solution: '4/2 = 2; 9 - (-5) = 14.' },
+      { kind: 'mcq', prompt: '(9 \\times 10^5) \\div (3 \\times 10^2)',
+        options: ['3 \\times 10^3', '3 \\times 10^7', '6 \\times 10^3', '3 \\times 10^-3'], correct: 0,
+        solution: '9/3 = 3; 5 - 2 = 3.' },
     ],
   },
+
+  // ───────────────────── Lesson 17: + and − in standard form ──────────────
   {
-    id: 'L15',
-    title: 'Lesson 15 · Adding & subtracting in standard form',
+    id: 'L17',
+    title: 'Lesson 17 · Adding & subtracting in standard form',
     teach: {
-      heading: 'Add / subtract numbers in standard form',
+      heading: 'How to add or subtract numbers in standard form',
       body: [
         'You CANNOT just add the a-parts unless the powers of 10 match.',
-        'Method 1: rewrite both numbers with the SAME power of 10, then add the a-parts. Adjust the result to proper standard form.',
+        'Method 1: rewrite both with the SAME power of 10, then add the a-parts. Tidy back to standard form at the end.',
         'Method 2: convert both to ordinary numbers, add, then rewrite in standard form.',
-        'Tip: if the powers differ a lot (e.g., 10⁹ + 10²), the smaller one is almost negligible — but still convert and add carefully when precision matters.',
+        'If the indices differ a lot, the smaller one is almost negligible — but compute carefully if precision matters.',
       ],
-      example: '(9 × 10⁴) + (3 × 10⁵) = 0.9 × 10⁵ + 3 × 10⁵ = 3.9 × 10⁵.',
+      example: '(9 \\times 10^4) + (3 \\times 10^5) = 0.9 \\times 10^5 + 3 \\times 10^5 = 3.9 \\times 10^5.',
     },
-    qFormat: 'Answer in standard form like "3.9 x 10^5".',
     questions: [
-      { kind: 'std', prompt: '(9 × 10⁴) + (3 × 10⁵)', answer: '3.9x10^5', solution: 'Rewrite 9×10⁴ as 0.9×10⁵; 0.9 + 3 = 3.9.' },
-      { kind: 'std', prompt: '(5 × 10⁻³) − (1.5 × 10⁻⁴)', answer: '4.85x10^-3', solution: '1.5×10⁻⁴ = 0.15×10⁻³; 5−0.15 = 4.85.' },
-      { kind: 'std', prompt: '(3 × 10⁵) + (4 × 10⁵)', answer: '7x10^5', solution: 'Same power: 3+4 = 7.' },
-      { kind: 'std', prompt: '(1.5 × 10⁷) − (8 × 10⁶)', answer: '7x10^6', solution: '1.5×10⁷ = 15×10⁶; 15−8=7.' },
-      { kind: 'std', prompt: '(2.5 × 10⁻⁵) + (3 × 10⁻⁶)', answer: '2.8x10^-5', solution: '3×10⁻⁶ = 0.3×10⁻⁵; 2.5+0.3 = 2.8.' },
-      { kind: 'std', prompt: '(6 × 10³) + (4 × 10²)', answer: '6.4x10^3', solution: '4×10² = 0.4×10³; 6+0.4 = 6.4.' },
+      { kind: 'mcq', prompt: '(9 \\times 10^4) + (3 \\times 10^5)',
+        options: ['3.9 \\times 10^5', '12 \\times 10^9', '3.9 \\times 10^9', '4.2 \\times 10^5'], correct: 0,
+        solution: 'Rewrite 9 \\times 10^4 = 0.9 \\times 10^5; 0.9 + 3 = 3.9.' },
+      { kind: 'fill-std', prompt: '(5 \\times 10^-3) - (1.5 \\times 10^-4)', answer: '4.85x10^-3',
+        solution: '1.5 \\times 10^-4 = 0.15 \\times 10^-3; 5 - 0.15 = 4.85.' },
+      { kind: 'mcq', prompt: '(3 \\times 10^5) + (4 \\times 10^5)',
+        options: ['7 \\times 10^5', '7 \\times 10^{10}', '12 \\times 10^5', '7 \\times 10^{25}'], correct: 0,
+        solution: 'Same power: 3+4 = 7.' },
+      { kind: 'fill-std', prompt: '(1.5 \\times 10^7) - (8 \\times 10^6)', answer: '7x10^6',
+        solution: '15 \\times 10^6 - 8 \\times 10^6 = 7 \\times 10^6.' },
+      { kind: 'fill-std', prompt: '(2.5 \\times 10^-5) + (3 \\times 10^-6)', answer: '2.8x10^-5',
+        solution: '3 \\times 10^-6 = 0.3 \\times 10^-5; 2.5 + 0.3 = 2.8.' },
+      { kind: 'fill-std', prompt: '(6 \\times 10^3) + (4 \\times 10^2)', answer: '6.4x10^3',
+        solution: '0.4 + 6 = 6.4.' },
     ],
   },
 ]
 
 const CH5_PROGRESS_KEY = 'tenali-chapter5-progress'
 function ch5_loadProgress() {
-  try {
-    const raw = localStorage.getItem(CH5_PROGRESS_KEY)
-    if (!raw) return {}
-    return JSON.parse(raw) || {}
-  } catch { return {} }
+  try { return JSON.parse(localStorage.getItem(CH5_PROGRESS_KEY) || '{}') || {} } catch { return {} }
 }
-function ch5_saveProgress(p) {
-  try { localStorage.setItem(CH5_PROGRESS_KEY, JSON.stringify(p)) } catch {}
-}
+function ch5_saveProgress(p) { try { localStorage.setItem(CH5_PROGRESS_KEY, JSON.stringify(p)) } catch {} }
 
 function Chapter5App({ onBack }) {
   const [progress, setProgress] = useState(ch5_loadProgress)
-  const [activeId, setActiveId] = useState(null)        // current lesson id, or null = overview
-  const [phase, setPhase] = useState('teach')           // 'teach' | 'practice' | 'done'
+  const [activeId, setActiveId] = useState(null)
+  const [phase, setPhase] = useState('teach')
   const [qIdx, setQIdx] = useState(0)
-  const [input, setInput] = useState('')
+  const [selectedIdx, setSelectedIdx] = useState(null)  // chosen MCQ option (display index)
+  const [fillInput, setFillInput] = useState('')
   const [revealed, setRevealed] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
-  const [showSolution, setShowSolution] = useState(false)
   const inputRef = useRef(null)
 
   const lesson = activeId ? CH5_LESSONS.find(l => l.id === activeId) : null
   const currentQ = lesson ? lesson.questions[qIdx] : null
 
-  // Persist progress
+  // Compute display order for MCQ options (stable per question)
+  const optionOrder = useMemo(() => {
+    if (!currentQ || currentQ.kind !== 'mcq') return []
+    return ch5_seededShuffle(currentQ.options.length, `${activeId}-${qIdx}-${currentQ.prompt}`)
+  }, [activeId, qIdx, currentQ])
+  const correctDisplayIdx = useMemo(() => optionOrder.indexOf(currentQ?.correct ?? -1), [optionOrder, currentQ])
+
   useEffect(() => { ch5_saveProgress(progress) }, [progress])
 
-  // Auto-focus input when entering a question
   useEffect(() => {
-    if (phase === 'practice' && !revealed && inputRef.current) inputRef.current.focus()
-  }, [phase, qIdx, revealed])
+    if (phase !== 'practice' || revealed) return
+    if (currentQ?.kind?.startsWith('fill') && inputRef.current) inputRef.current.focus()
+  }, [phase, qIdx, revealed, currentQ])
 
   const startLesson = (id) => {
     setActiveId(id)
     const p = progress[id] || {}
-    // Resume at lesson's saved index, but always show teach if user hasn't seen it
-    if (p.teachSeen) {
-      setPhase('practice')
-      setQIdx(p.qIdx || 0)
-    } else {
-      setPhase('teach')
-      setQIdx(0)
-    }
-    setInput(''); setRevealed(false); setIsCorrect(false); setShowSolution(false)
+    if (p.teachSeen) { setPhase('practice'); setQIdx(p.qIdx || 0) }
+    else { setPhase('teach'); setQIdx(0) }
+    setSelectedIdx(null); setFillInput(''); setRevealed(false); setIsCorrect(false)
   }
 
   const acknowledgeTeach = () => {
     setProgress(p => ({ ...p, [activeId]: { ...(p[activeId] || {}), teachSeen: true, qIdx: 0 } }))
-    setPhase('practice')
-    setQIdx(0)
-    setInput(''); setRevealed(false); setIsCorrect(false); setShowSolution(false)
+    setPhase('practice'); setQIdx(0)
+    setSelectedIdx(null); setFillInput(''); setRevealed(false); setIsCorrect(false)
   }
 
-  const submit = () => {
+  const submitFill = () => {
     if (!currentQ) return
     if (revealed) { advance(); return }
-    const ok = ch5_check(currentQ, input)
+    const ok = ch5_checkFill(currentQ, fillInput)
     setIsCorrect(ok); setRevealed(true)
+  }
+
+  const pickMcq = (displayIdx) => {
+    if (!currentQ || revealed || currentQ.kind !== 'mcq') return
+    const sourceIdx = optionOrder[displayIdx]
+    const ok = sourceIdx === currentQ.correct
+    setSelectedIdx(displayIdx); setIsCorrect(ok); setRevealed(true)
   }
 
   const advance = () => {
     const next = qIdx + 1
     if (!lesson) return
     if (next >= lesson.questions.length) {
-      // Lesson complete
       setProgress(p => ({ ...p, [activeId]: { ...(p[activeId] || {}), teachSeen: true, qIdx: lesson.questions.length, completed: true } }))
       setPhase('done')
     } else {
       setQIdx(next)
-      setInput(''); setRevealed(false); setIsCorrect(false); setShowSolution(false)
+      setSelectedIdx(null); setFillInput(''); setRevealed(false); setIsCorrect(false)
       setProgress(p => ({ ...p, [activeId]: { ...(p[activeId] || {}), teachSeen: true, qIdx: next } }))
     }
   }
 
   const backToOverview = () => {
     setActiveId(null); setPhase('teach'); setQIdx(0)
-    setInput(''); setRevealed(false); setIsCorrect(false); setShowSolution(false)
+    setSelectedIdx(null); setFillInput(''); setRevealed(false); setIsCorrect(false)
   }
 
   const resetAll = () => {
@@ -5796,14 +5964,29 @@ function Chapter5App({ onBack }) {
     backToOverview()
   }
 
-  const handleKey = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      submit()
+  // Keyboard: 1..9 picks MCQ option, Enter advances after reveal
+  useEffect(() => {
+    if (phase !== 'practice' || !currentQ) return
+    const onKey = (e) => {
+      if (revealed) {
+        if (e.key === 'Enter') { e.preventDefault(); advance() }
+        return
+      }
+      if (currentQ.kind === 'mcq') {
+        const k = e.key
+        if (/^[1-9]$/.test(k)) {
+          const i = parseInt(k, 10) - 1
+          if (i < currentQ.options.length) { e.preventDefault(); pickMcq(i) }
+        }
+      } else if (currentQ.kind?.startsWith('fill')) {
+        if (e.key === 'Enter') { e.preventDefault(); submitFill() }
+      }
     }
-  }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [phase, qIdx, revealed, currentQ, fillInput, optionOrder])
 
-  // ---- Overview ----
+  // ────────── Overview ──────────
   if (!activeId) {
     const total = CH5_LESSONS.length
     const done = CH5_LESSONS.filter(l => progress[l.id]?.completed).length
@@ -5815,11 +5998,11 @@ function Chapter5App({ onBack }) {
         </div>
         <h1 style={{ marginBottom: 4 }}>Chapter 5 — Fractions, Percentages & Standard Form</h1>
         <p className="subtitle" style={{ marginTop: 0 }}>
-          Cambridge IGCSE Mathematics · adaptive lesson chain · {done}/{total} complete
+          Cambridge IGCSE Mathematics · {done}/{total} lessons complete
         </p>
         <p style={{ opacity: 0.85, marginTop: 8 }}>
-          Pick the next lesson. Each one starts with a short explanation and worked example, then practice questions —
-          easy warm-ups first, then the actual questions from the chapter exercises.
+          Pick the next lesson. Each one starts with a short explanation, then a stream of multiple-choice and fill-in-the-blank
+          questions — easy warm-ups first, then the actual chapter exercise problems.
         </p>
         <ol style={{ listStyle: 'none', padding: 0, marginTop: 16 }}>
           {CH5_LESSONS.map((l, i) => {
@@ -5831,7 +6014,7 @@ function Chapter5App({ onBack }) {
             return (
               <li key={l.id} style={{ marginBottom: 8 }}>
                 <button
-                  onClick={() => accessible ? startLesson(l.id) : null}
+                  onClick={() => accessible && startLesson(l.id)}
                   disabled={!accessible}
                   style={{
                     width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 10,
@@ -5841,14 +6024,10 @@ function Chapter5App({ onBack }) {
                     opacity: accessible ? 1 : 0.55, fontSize: '0.95rem',
                   }}
                 >
-                  <span style={{ marginRight: 8 }}>
-                    {completed ? '✅' : inProg ? '▶' : accessible ? '○' : '🔒'}
-                  </span>
+                  <span style={{ marginRight: 8 }}>{completed ? '✅' : inProg ? '▶' : accessible ? '○' : '🔒'}</span>
                   {l.title}
                   {p.qIdx > 0 && !completed && (
-                    <span style={{ float: 'right', fontSize: '0.8rem', opacity: 0.7 }}>
-                      {p.qIdx}/{l.questions.length}
-                    </span>
+                    <span style={{ float: 'right', fontSize: '0.8rem', opacity: 0.7 }}>{p.qIdx}/{l.questions.length}</span>
                   )}
                 </button>
               </li>
@@ -5859,7 +6038,7 @@ function Chapter5App({ onBack }) {
     )
   }
 
-  // ---- Teach panel ----
+  // ────────── Teach ──────────
   if (phase === 'teach') {
     return (
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '1.5rem 1rem', color: 'var(--clr-text)' }}>
@@ -5869,33 +6048,25 @@ function Chapter5App({ onBack }) {
         <h2 style={{ marginBottom: 4 }}>{lesson.title}</h2>
         <h3 style={{ color: 'var(--clr-accent, #6cf)', marginTop: 16 }}>{lesson.teach.heading}</h3>
         {lesson.teach.body.map((para, i) => (
-          <p key={i} style={{ lineHeight: 1.6, marginBottom: 10 }}>{para}</p>
+          <p key={i} style={{ lineHeight: 1.7, marginBottom: 10, fontSize: '1rem' }}>{renderMath(para)}</p>
         ))}
         <div style={{
-          marginTop: 14, padding: 12, borderRadius: 8,
+          marginTop: 14, padding: 14, borderRadius: 8,
           background: 'rgba(108,206,255,0.08)', border: '1px solid rgba(108,206,255,0.25)',
+          fontSize: '1rem', lineHeight: 1.7,
         }}>
-          <strong>Worked example: </strong>{lesson.teach.example}
+          <strong>Worked example: </strong>{renderMath(lesson.teach.example)}
         </div>
-        {lesson.qFormat && (
-          <p style={{ marginTop: 14, fontSize: '0.9rem', opacity: 0.8 }}>
-            <em>Answer format:</em> {lesson.qFormat}
-          </p>
-        )}
-        <button
-          onClick={acknowledgeTeach}
-          style={{
-            marginTop: 18, padding: '10px 18px', borderRadius: 8, fontSize: '1rem',
-            background: 'var(--clr-accent, #2ea043)', color: 'white', border: 'none', cursor: 'pointer',
-          }}
-        >
-          I've got it — start questions →
-        </button>
+        {lesson.qFormat && <p style={{ marginTop: 14, fontSize: '0.9rem', opacity: 0.8 }}><em>Note:</em> {lesson.qFormat}</p>}
+        <button onClick={acknowledgeTeach} style={{
+          marginTop: 18, padding: '10px 18px', borderRadius: 8, fontSize: '1rem',
+          background: 'var(--clr-accent, #2ea043)', color: 'white', border: 'none', cursor: 'pointer',
+        }}>I've got it — start questions →</button>
       </div>
     )
   }
 
-  // ---- Done ----
+  // ────────── Done ──────────
   if (phase === 'done') {
     const idx = CH5_LESSONS.findIndex(l => l.id === activeId)
     const next = CH5_LESSONS[idx + 1]
@@ -5907,123 +6078,129 @@ function Chapter5App({ onBack }) {
         <h2>🎉 Lesson complete</h2>
         <p>You finished <strong>{lesson.title}</strong>.</p>
         {next ? (
-          <button
-            onClick={() => startLesson(next.id)}
-            style={{
-              marginTop: 12, padding: '10px 18px', borderRadius: 8, fontSize: '1rem',
-              background: 'var(--clr-accent, #2ea043)', color: 'white', border: 'none', cursor: 'pointer',
-            }}
-          >
-            Next: {next.title} →
-          </button>
+          <button onClick={() => startLesson(next.id)} style={{
+            marginTop: 12, padding: '10px 18px', borderRadius: 8, fontSize: '1rem',
+            background: 'var(--clr-accent, #2ea043)', color: 'white', border: 'none', cursor: 'pointer',
+          }}>Next: {next.title} →</button>
         ) : (
-          <p style={{ marginTop: 16, fontSize: '1.05rem' }}>
-            🎓 You've completed every lesson in Chapter 5! All micro-skills covered.
-          </p>
+          <p style={{ marginTop: 16, fontSize: '1.05rem' }}>🎓 You've completed every lesson in Chapter 5.</p>
         )}
-        <button onClick={backToOverview} style={{ marginTop: 12, marginLeft: 8, padding: '10px 18px', borderRadius: 8, background: 'transparent', color: 'var(--clr-text)', border: '1px solid var(--clr-border, #555)', cursor: 'pointer' }}>
-          Back to lessons
-        </button>
+        <button onClick={backToOverview} style={{
+          marginTop: 12, marginLeft: 8, padding: '10px 18px', borderRadius: 8,
+          background: 'transparent', color: 'var(--clr-text)', border: '1px solid var(--clr-border, #555)', cursor: 'pointer',
+        }}>Back to lessons</button>
       </div>
     )
   }
 
-  // ---- Practice ----
+  // ────────── Practice ──────────
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '1.5rem 1rem', color: 'var(--clr-text)' }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
         <button className="back-button" onClick={backToOverview}>← Lessons</button>
-        <button className="back-button" onClick={() => { setPhase('teach') }}>📖 Re-read teach</button>
+        <button className="back-button" onClick={() => setPhase('teach')}>📖 Re-read teach</button>
         <span style={{ marginLeft: 'auto', fontSize: '0.85rem', opacity: 0.75 }}>
           Question {qIdx + 1} / {lesson.questions.length}
         </span>
       </div>
       <h3 style={{ marginBottom: 4 }}>{lesson.title}</h3>
-      <div style={{
-        height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden', marginBottom: 16,
-      }}>
-        <div style={{
-          width: `${(qIdx / lesson.questions.length) * 100}%`,
-          height: '100%', background: 'var(--clr-accent, #2ea043)', transition: 'width 0.3s',
-        }} />
+      <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ width: `${(qIdx / lesson.questions.length) * 100}%`, height: '100%', background: 'var(--clr-accent, #2ea043)', transition: 'width 0.3s' }} />
       </div>
 
       <div style={{
-        padding: '16px 18px', borderRadius: 10, background: 'var(--clr-surface, #1c1c1f)',
-        border: '1px solid var(--clr-border, #333)', marginBottom: 14,
+        padding: '18px 20px', borderRadius: 10, background: 'var(--clr-surface, #1c1c1f)',
+        border: '1px solid var(--clr-border, #333)', marginBottom: 16,
+        fontSize: '1.2rem', lineHeight: 1.6,
       }}>
-        <div style={{ fontSize: '1.15rem', lineHeight: 1.5 }}>{currentQ.prompt}</div>
+        {renderMath(currentQ.prompt)}
       </div>
 
-      <input
-        ref={inputRef}
-        type="text"
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        onKeyDown={handleKey}
-        disabled={revealed}
-        placeholder="Your answer…"
-        autoComplete="off"
-        style={{
-          width: '100%', padding: '10px 12px', fontSize: '1.05rem', borderRadius: 8,
-          border: '1px solid var(--clr-border, #555)',
-          background: revealed ? 'rgba(255,255,255,0.04)' : 'var(--clr-surface, #1c1c1f)',
-          color: 'var(--clr-text)', boxSizing: 'border-box',
-        }}
-      />
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-        {!revealed ? (
-          <>
-            <button onClick={submit} disabled={!input.trim()} style={{
-              padding: '8px 16px', borderRadius: 6, background: 'var(--clr-accent, #2ea043)',
-              color: 'white', border: 'none', cursor: 'pointer', fontSize: '0.95rem',
-              opacity: input.trim() ? 1 : 0.5,
-            }}>Check</button>
-            <button onClick={() => setShowSolution(s => !s)} style={{
-              padding: '8px 16px', borderRadius: 6, background: 'transparent',
-              color: 'var(--clr-text)', border: '1px solid var(--clr-border, #555)', cursor: 'pointer', fontSize: '0.9rem',
-            }}>
-              {showSolution ? 'Hide hint' : 'Show worked solution'}
-            </button>
-          </>
-        ) : (
-          <button onClick={advance} style={{
-            padding: '8px 18px', borderRadius: 6, background: 'var(--clr-accent, #2ea043)',
-            color: 'white', border: 'none', cursor: 'pointer', fontSize: '0.95rem',
-          }}>
-            {qIdx + 1 === lesson.questions.length ? 'Finish lesson →' : 'Next question →'}
-          </button>
-        )}
-      </div>
+      {currentQ.kind === 'mcq' ? (
+        <div className="options-list">
+          {optionOrder.map((srcIdx, displayIdx) => {
+            const opt = currentQ.options[srcIdx]
+            const isSelected = selectedIdx === displayIdx
+            const isCorrectOpt = revealed && correctDisplayIdx === displayIdx
+            const isWrongPick = revealed && isSelected && !isCorrect
+            return (
+              <button
+                key={displayIdx}
+                className={`option-card ${isSelected ? 'selected' : ''} ${isCorrectOpt ? 'correct-option' : ''} ${isWrongPick ? 'wrong-option' : ''}`}
+                onClick={() => pickMcq(displayIdx)}
+                disabled={revealed}
+                style={{
+                  borderColor: isCorrectOpt ? 'var(--clr-correct, #2ea043)' : isWrongPick ? 'var(--clr-wrong, #f85149)' : undefined,
+                  background: isCorrectOpt ? 'rgba(46,160,67,0.15)' : isWrongPick ? 'rgba(248,81,73,0.15)' : undefined,
+                }}
+              >
+                <strong style={{ marginRight: 10, opacity: 0.85 }}>{CH5_OPTION_LABEL[displayIdx]}.</strong>
+                <span>{renderMath(opt)}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <>
+          <input
+            ref={inputRef}
+            type="text"
+            value={fillInput}
+            onChange={e => setFillInput(e.target.value)}
+            disabled={revealed}
+            placeholder="Your answer…"
+            autoComplete="off"
+            style={{
+              width: '100%', padding: '12px 14px', fontSize: '1.1rem', borderRadius: 8,
+              border: '1px solid var(--clr-border, #555)',
+              background: revealed ? 'rgba(255,255,255,0.04)' : 'var(--clr-surface, #1c1c1f)',
+              color: 'var(--clr-text)', boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            {!revealed ? (
+              <button onClick={submitFill} disabled={!fillInput.trim()} style={{
+                padding: '8px 18px', borderRadius: 6, background: 'var(--clr-accent, #2ea043)',
+                color: 'white', border: 'none', cursor: 'pointer', fontSize: '0.95rem',
+                opacity: fillInput.trim() ? 1 : 0.5,
+              }}>Check</button>
+            ) : (
+              <button onClick={advance} style={{
+                padding: '8px 18px', borderRadius: 6, background: 'var(--clr-accent, #2ea043)',
+                color: 'white', border: 'none', cursor: 'pointer', fontSize: '0.95rem',
+              }}>{qIdx + 1 === lesson.questions.length ? 'Finish lesson →' : 'Next question →'}</button>
+            )}
+          </div>
+        </>
+      )}
 
       {revealed && (
         <div style={{
-          marginTop: 14, padding: 12, borderRadius: 8,
+          marginTop: 16, padding: 14, borderRadius: 8,
           background: isCorrect ? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)',
           border: `1px solid ${isCorrect ? 'rgba(46,160,67,0.45)' : 'rgba(248,81,73,0.45)'}`,
+          fontSize: '0.98rem', lineHeight: 1.6,
         }}>
           <strong>{isCorrect ? '✅ Correct!' : '❌ Not quite.'}</strong>
-          <div style={{ marginTop: 6, fontSize: '0.95rem' }}>
-            <strong>Answer:</strong> {currentQ.answer}
-          </div>
-          {currentQ.solution && (
-            <div style={{ marginTop: 6, fontSize: '0.95rem', opacity: 0.9 }}>
-              <strong>Working:</strong> {currentQ.solution}
+          {currentQ.kind === 'mcq' ? (
+            <div style={{ marginTop: 6 }}>
+              <strong>Answer:</strong> {renderMath(currentQ.options[currentQ.correct])}
+            </div>
+          ) : (
+            <div style={{ marginTop: 6 }}>
+              <strong>Answer:</strong> {renderMath(String(currentQ.answer))}
             </div>
           )}
-        </div>
-      )}
-
-      {!revealed && showSolution && (
-        <div style={{
-          marginTop: 14, padding: 12, borderRadius: 8,
-          background: 'rgba(108,206,255,0.08)', border: '1px solid rgba(108,206,255,0.25)',
-        }}>
-          <strong>Worked solution:</strong> {currentQ.solution}
-          <div style={{ marginTop: 4, fontSize: '0.9rem', opacity: 0.85 }}>
-            (Answer hidden — try entering it yourself, then press Check.)
-          </div>
+          {currentQ.solution && (
+            <div style={{ marginTop: 6, opacity: 0.9 }}>
+              <strong>Working:</strong> {renderMath(currentQ.solution)}
+            </div>
+          )}
+          {currentQ.kind === 'mcq' && (
+            <div style={{ marginTop: 10, fontSize: '0.85rem', opacity: 0.7 }}>
+              Press <kbd>Enter</kbd> for the next question.
+            </div>
+          )}
         </div>
       )}
     </div>
