@@ -28,8 +28,8 @@ import './App.css'
 const API = import.meta.env.VITE_API_BASE_URL || '';
 
 // App version — increment with each commit
-const TENALI_VERSION = '1.0.73'
-const TENALI_BUILD_DATE = '2026-05-01 16:09 IST'
+const TENALI_VERSION = '1.0.74'
+const TENALI_BUILD_DATE = '2026-05-01 16:16 IST'
 
 // Inject version badge into DOM once (appears on all routes)
 ;(() => {
@@ -5943,11 +5943,21 @@ function ch5RenderMath(text) {
 
 const CH5_AUTO_ADVANCE_MS = 5000
 
+// Spaced-repetition: when the student answers wrongly, the question is
+// re-inserted into the play sequence this many positions later.
+const CH5_RETRY_GAP = 4
+
 function Chapter5App({ onBack }) {
   const [progress, setProgress] = useState(ch5_loadProgress)
   const [activeId, setActiveId] = useState(null)
   const [phase, setPhase] = useState('teach')
   const [qIdx, setQIdx] = useState(0)
+  // playList is the dynamic sequence of source-question indices the student
+  // is walking through. Initially [0..N-1]; grows when wrong answers re-queue.
+  const [playList, setPlayList] = useState([])
+  // Source idx of the most recent wrong answer (or null) — drives the retry
+  // splice that happens at advance() time.
+  const [lastWrongSrc, setLastWrongSrc] = useState(null)
   const [selectedIdx, setSelectedIdx] = useState(null)  // chosen MCQ option (display index)
   const [fillInput, setFillInput] = useState('')
   const [revealed, setRevealed] = useState(false)
@@ -5958,13 +5968,21 @@ function Chapter5App({ onBack }) {
   const advanceRef = useRef(() => {})
 
   const lesson = activeId ? CH5_LESSONS.find(l => l.id === activeId) : null
-  const currentQ = lesson ? lesson.questions[qIdx] : null
+  const currentSourceIdx = playList[qIdx]
+  const currentQ = lesson && currentSourceIdx != null ? lesson.questions[currentSourceIdx] : null
+  // True if this question has appeared earlier in the play sequence — i.e.
+  // it's a re-attempt after a previous wrong answer. Drives the retry badge.
+  const isRetry = useMemo(() => {
+    if (currentSourceIdx == null) return false
+    return playList.slice(0, qIdx).includes(currentSourceIdx)
+  }, [playList, qIdx, currentSourceIdx])
 
-  // Compute display order for MCQ options (stable per question)
+  // Compute display order for MCQ options (stable per question; different on
+  // a retry so the student can't memorise positions).
   const optionOrder = useMemo(() => {
     if (!currentQ || currentQ.kind !== 'mcq') return []
-    return ch5_seededShuffle(currentQ.options.length, `${activeId}-${qIdx}-${currentQ.prompt}`)
-  }, [activeId, qIdx, currentQ])
+    return ch5_seededShuffle(currentQ.options.length, `${activeId}-${qIdx}-${currentSourceIdx}-${currentQ.prompt}`)
+  }, [activeId, qIdx, currentSourceIdx, currentQ])
   const correctDisplayIdx = useMemo(() => optionOrder.indexOf(currentQ?.correct ?? -1), [optionOrder, currentQ])
 
   useEffect(() => { ch5_saveProgress(progress) }, [progress])
@@ -5976,6 +5994,10 @@ function Chapter5App({ onBack }) {
 
   const startLesson = (id) => {
     setActiveId(id)
+    const lessonRef = CH5_LESSONS.find(l => l.id === id)
+    const initial = Array.from({ length: lessonRef.questions.length }, (_, i) => i)
+    setPlayList(initial)
+    setLastWrongSrc(null)
     const p = progress[id] || {}
     if (p.teachSeen) { setPhase('practice'); setQIdx(p.qIdx || 0) }
     else { setPhase('teach'); setQIdx(0) }
@@ -5986,6 +6008,7 @@ function Chapter5App({ onBack }) {
     setProgress(p => ({ ...p, [activeId]: { ...(p[activeId] || {}), teachSeen: true, qIdx: 0 } }))
     setPhase('practice'); setQIdx(0)
     setSelectedIdx(null); setFillInput(''); setRevealed(false); setIsCorrect(false)
+    setLastWrongSrc(null)
   }
 
   const submitFill = () => {
@@ -5993,13 +6016,15 @@ function Chapter5App({ onBack }) {
     if (revealed) { advance(); return }
     const ok = ch5_checkFill(currentQ, fillInput)
     setIsCorrect(ok); setRevealed(true)
+    setLastWrongSrc(ok ? null : currentSourceIdx)
   }
 
   const pickMcq = (displayIdx) => {
     if (!currentQ || revealed || currentQ.kind !== 'mcq') return
-    const sourceIdx = optionOrder[displayIdx]
-    const ok = sourceIdx === currentQ.correct
+    const optSourceIdx = optionOrder[displayIdx]
+    const ok = optSourceIdx === currentQ.correct
     setSelectedIdx(displayIdx); setIsCorrect(ok); setRevealed(true)
+    setLastWrongSrc(ok ? null : currentSourceIdx)
   }
 
   // Cancel any pending auto-advance timer (called whenever we leave the
@@ -6011,32 +6036,39 @@ function Chapter5App({ onBack }) {
 
   const advance = () => {
     cancelAutoAdvance()
-    const next = qIdx + 1
     if (!lesson) return
-    if (next >= lesson.questions.length) {
+    // If the just-finished question was wrong, splice it back into the play
+    // list a few items later so the student gets another shot at it.
+    let workingList = playList
+    if (lastWrongSrc != null) {
+      const insertAt = Math.min(qIdx + CH5_RETRY_GAP, playList.length)
+      workingList = [...playList.slice(0, insertAt), lastWrongSrc, ...playList.slice(insertAt)]
+      setPlayList(workingList)
+      setLastWrongSrc(null)
+    }
+    const next = qIdx + 1
+    if (next >= workingList.length) {
       setProgress(p => ({ ...p, [activeId]: { ...(p[activeId] || {}), teachSeen: true, qIdx: lesson.questions.length, completed: true } }))
       setPhase('done')
     } else {
       setQIdx(next)
       setSelectedIdx(null); setFillInput(''); setRevealed(false); setIsCorrect(false)
-      setProgress(p => ({ ...p, [activeId]: { ...(p[activeId] || {}), teachSeen: true, qIdx: next } }))
+      setProgress(p => ({ ...p, [activeId]: { ...(p[activeId] || {}), teachSeen: true, qIdx: Math.min(lesson.questions.length, next) } }))
     }
   }
   advanceRef.current = advance
 
-  // Jump straight to question `i` (0-indexed). Used by the slider so the
-  // student can skip ahead or revisit any question in the lesson.
+  // Jump straight to position `i` (0-indexed) in the current playList. Used
+  // by the slider so the student can skip ahead or revisit an earlier item.
   const jumpToQuestion = (i) => {
     cancelAutoAdvance()
     if (!lesson) return
-    const clamped = Math.max(0, Math.min(lesson.questions.length - 1, i))
-    setQIdx(clamped)
+    const clamped = Math.max(0, Math.min(playList.length - 1, i))
+    setQIdx(clamped); setLastWrongSrc(null)
     setSelectedIdx(null); setFillInput(''); setRevealed(false); setIsCorrect(false)
     setProgress(p => {
       const cur = p[activeId] || {}
-      // Don't *lower* the saved high-water-mark when the student rewinds —
-      // qIdx in storage tracks furthest-reached, not current position.
-      const saved = Math.max(cur.qIdx || 0, clamped)
+      const saved = Math.max(cur.qIdx || 0, Math.min(lesson.questions.length, clamped))
       return { ...p, [activeId]: { ...cur, teachSeen: true, qIdx: saved } }
     })
   }
@@ -6213,23 +6245,27 @@ function Chapter5App({ onBack }) {
   }
 
   // ────────── Practice ──────────
+  const sliderMax = Math.max(1, playList.length)
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '1.5rem 1rem', color: 'var(--clr-text)' }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
         <button className="back-button" onClick={backToOverview}>← Lessons</button>
         <button className="back-button" onClick={() => setPhase('teach')}>📖 Re-read teach</button>
         <span style={{ marginLeft: 'auto', fontSize: '0.85rem', opacity: 0.75 }}>
-          Question {qIdx + 1} / {lesson.questions.length}
+          Question {qIdx + 1} / {sliderMax}
+          {sliderMax > lesson.questions.length && (
+            <span style={{ marginLeft: 6, color: '#f0a020' }}>· {sliderMax - lesson.questions.length} retry queued</span>
+          )}
         </span>
       </div>
       <h3 style={{ marginBottom: 8 }}>{lesson.title}</h3>
-      {/* Question slider — drag to jump to any question in the lesson */}
+      {/* Question slider — drag to jump to any question in the play sequence */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <span style={{ fontSize: '0.78rem', opacity: 0.65, minWidth: 18, textAlign: 'right' }}>1</span>
         <input
           type="range"
           min={1}
-          max={lesson.questions.length}
+          max={sliderMax}
           value={qIdx + 1}
           onChange={e => jumpToQuestion(parseInt(e.target.value, 10) - 1)}
           aria-label="Jump to question"
@@ -6238,7 +6274,7 @@ function Chapter5App({ onBack }) {
             cursor: 'pointer', height: 22,
           }}
         />
-        <span style={{ fontSize: '0.78rem', opacity: 0.65, minWidth: 22 }}>{lesson.questions.length}</span>
+        <span style={{ fontSize: '0.78rem', opacity: 0.65, minWidth: 22 }}>{sliderMax}</span>
       </div>
 
       <div style={{
@@ -6246,7 +6282,15 @@ function Chapter5App({ onBack }) {
         border: '1px solid var(--clr-border, #333)', marginBottom: 16,
         fontSize: '1.25rem', lineHeight: 2.1, textAlign: 'center',
         display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 80,
+        position: 'relative',
       }}>
+        {isRetry && (
+          <span style={{
+            position: 'absolute', top: 8, right: 12, fontSize: '0.7rem', fontWeight: 700,
+            letterSpacing: '0.5px', color: '#f0a020', background: 'rgba(240,160,32,0.15)',
+            border: '1px solid rgba(240,160,32,0.45)', padding: '2px 8px', borderRadius: 10,
+          }}>↻ RETRY</span>
+        )}
         <span>{ch5RenderMath(currentQ.prompt)}</span>
       </div>
 
