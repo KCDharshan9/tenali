@@ -8169,6 +8169,63 @@ const Bridge22App = makeBridgeApp({
   nextHref: '/chapter5', nextLabel: 'On to Lesson 12',
 })
 
+// ─── Bridge 23 — Reverse Percentages ──────────────────────────────────
+function generateBridge23Question() {
+  // Pick original O and percent P, decide direction, compute new = O × multiplier.
+  // Question gives new + P, asks original. Pick clean values.
+  const isIncrease = Math.random() < 0.4
+  const Oq = bridge_pick([20, 25, 40, 50, 80, 100, 120, 200, 400])
+  const Mu = bridge_randInt(1, 6)
+  const O = Oq * Mu
+  const Pp = bridge_pick([5, 10, 12.5, 15, 20, 25, 30, 40, 50])
+  const multiplier = isIncrease ? (1 + Pp / 100) : (1 - Pp / 100)
+  const N = O * multiplier
+  if (!Number.isInteger(N) && Math.abs(N - Math.round(N)) > 0.01) return generateBridge23Question()
+  const dirText = isIncrease ? `After a ${Pp}% increase` : `After a ${Pp}% decrease`
+  const prompt = `${dirText}, the value is  ${Math.round(N * 100) / 100}.   What was the original?`
+  const answer = O
+  const candidates = [
+    Math.round(N * (1 - Pp / 100)),               // applied SAME percent again (classic mistake — what user did to "undo")
+    Math.round(N * (1 + Pp / 100)),
+    Math.round(N - Pp),                            // subtracted percent points
+    Math.round(N / Pp * 100),
+    Math.round(N * Pp / 100),
+    O + 10, O - 10,
+  ]
+  const { options, correctIndex } = bridge_buildOptions(answer, candidates.filter(c => Number.isInteger(c) && c > 0))
+  return { prompt, options, correctIndex,
+           explanation: `Multiplier was ${multiplier}. Divide the new value by the multiplier:  ${Math.round(N * 100) / 100} ÷ ${multiplier} = ${O}.   Trap: you can't just add the same % back to the new value.` }
+}
+
+function Lesson13ProgressionStrip({ current }) {
+  const nodes = [
+    { id: 'lesson12', label: 'Lesson 12', sub: 'Multiplier',          href: '/chapter5', done: ch5LessonDone('L12') },
+    { id: 'bridge23', label: 'Bridge 23', sub: 'Reverse %',            href: '/bridge23' },
+    { id: 'lesson13', label: 'Lesson 13', sub: 'Reverse Percentages', href: '/chapter5' },
+  ]
+  return renderProgressionStrip('Lesson 13 — Prerequisite Path', nodes, current)
+}
+
+const Bridge23App = makeBridgeApp({
+  id: 'bridge23', currentNode: 'bridge23', StripComponent: Lesson13ProgressionStrip,
+  title: 'Bridge 23 · Reverse Percentages',
+  subtitle: 'Find the original value when you know the value AFTER a % change.',
+  intro: 'You know the new value and the percent change.  You want to know what the value was BEFORE.   Identify the multiplier (Bridge 22), then DIVIDE the new value by it.',
+  teach: {
+    rule: ['original = new ÷ multiplier.   After a p% INCREASE: divide by (1 + p/100).   After a p% DECREASE: divide by (1 − p/100).   TRAP: you cannot reverse a 10% decrease by adding 10% back to the new value — that gives a different (smaller) original.'],
+    example: {
+      setup: 'After a 10% discount a jacket costs $108. Original?',
+      steps: [
+        'Multiplier for 10% off  =  1 − 0.10  =  0.90.',
+        '108 ÷ 0.90 = 120.',
+      ],
+      answer: 'Original price was $120.',
+    },
+  },
+  generator: generateBridge23Question,
+  nextHref: '/chapter5', nextLabel: 'On to Lesson 13',
+})
+
 function Chapter5App({ onBack }) {
   const [progress, setProgress] = useState(ch5_loadProgress)
   const [activeId, setActiveId] = useState(null)
@@ -8431,6 +8488,7 @@ function Chapter5App({ onBack }) {
         {activeId === 'L10' && <Lesson10ProgressionStrip current="lesson10" />}
         {activeId === 'L11' && <Lesson11ProgressionStrip current="lesson11" />}
         {activeId === 'L12' && <Lesson12ProgressionStrip current="lesson12" />}
+        {activeId === 'L13' && <Lesson13ProgressionStrip current="lesson13" />}
         <h2 style={{ marginBottom: 4 }}>{ch5RenderMath(lesson.title)}</h2>
         <h3 style={{ color: 'var(--clr-accent, #6cf)', marginTop: 16 }}>{lesson.teach.heading}</h3>
         {lesson.teach.body.map((para, i) => (
@@ -8473,6 +8531,7 @@ function Chapter5App({ onBack }) {
         {activeId === 'L10' && <Lesson10ProgressionStrip current="lesson10" />}
         {activeId === 'L11' && <Lesson11ProgressionStrip current="lesson11" />}
         {activeId === 'L12' && <Lesson12ProgressionStrip current="lesson12" />}
+        {activeId === 'L13' && <Lesson13ProgressionStrip current="lesson13" />}
         <h2>🎉 Lesson complete</h2>
         <p>You finished <strong>{ch5RenderMath(lesson.title)}</strong>.</p>
         {next ? (
@@ -8517,6 +8576,7 @@ function Chapter5App({ onBack }) {
       {activeId === 'L10' && <Lesson10ProgressionStrip current="lesson10" />}
       {activeId === 'L11' && <Lesson11ProgressionStrip current="lesson11" />}
       {activeId === 'L12' && <Lesson12ProgressionStrip current="lesson12" />}
+      {activeId === 'L13' && <Lesson13ProgressionStrip current="lesson13" />}
       <h3 style={{ marginBottom: 8 }}>{ch5RenderMath(lesson.title)}</h3>
       {/* Question slider — drag to jump to any question in the play sequence */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
@@ -35236,6 +35296,7 @@ function App() {
   if (pathname === '/bridge20') return (<><button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? '☀️' : '🌙'}</button><div className="app-shell"><div className="card"><AuthGate><Bridge20App onBack={() => { window.location.href = '/chapter5' }} /></AuthGate></div></div></>)
   if (pathname === '/bridge21') return (<><button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? '☀️' : '🌙'}</button><div className="app-shell"><div className="card"><AuthGate><Bridge21App onBack={() => { window.location.href = '/chapter5' }} /></AuthGate></div></div></>)
   if (pathname === '/bridge22') return (<><button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? '☀️' : '🌙'}</button><div className="app-shell"><div className="card"><AuthGate><Bridge22App onBack={() => { window.location.href = '/chapter5' }} /></AuthGate></div></div></>)
+  if (pathname === '/bridge23') return (<><button className="theme-toggle" onClick={toggleTheme}>{theme === 'dark' ? '☀️' : '🌙'}</button><div className="app-shell"><div className="card"><AuthGate><Bridge23App onBack={() => { window.location.href = '/chapter5' }} /></AuthGate></div></div></>)
 
   // Route: /chapter1 → Cambridge IGCSE Chapter 1 (Reviewing Number Concepts)
   if (pathname === '/chapter1') {
