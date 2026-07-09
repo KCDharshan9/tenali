@@ -36143,9 +36143,6 @@ function App() {
 
   return (
     <div className="app-shell">
-      <div className="coin-pill" title="Sun Coins">
-        🪙 {coins}
-      </div>
       <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
         {theme === 'dark' ? '☀️' : '🌙'}
       </button>
@@ -36390,7 +36387,7 @@ function Home({ onSelect, completedTopics = [], goldMastery = [], coins = 0 }) {
           const isGold = goldMastery.includes(app.key)
           const isCompleted = completedTopics.includes(app.key)
           return (
-            <button key={app.key} className={`menu-card ${app.color}`} onClick={() => onSelect(app.key)}>
+            <button key={app.key} className={`menu-card ${isGold ? 'gold-card' : app.color}`} onClick={() => onSelect(app.key)}>
               <span className="menu-title">
                 {app.name}
                 {isGold && <span className="badge-indicator">🥇</span>}
@@ -36426,21 +36423,7 @@ function Home({ onSelect, completedTopics = [], goldMastery = [], coins = 0 }) {
         >
           ⚙️ Toggle Stage 3 Mastery
         </button>
-        <button 
-          style={{ fontSize: '0.75rem', padding: '6px 12px', background: 'var(--clr-hover-strong)', border: '1px solid var(--clr-border)', color: 'var(--clr-text)', borderRadius: '6px', cursor: 'pointer' }}
-          onClick={() => {
-            const nextCoins = prompt("Enter new coin amount:", String(coins));
-            if (nextCoins !== null) {
-              const amount = parseInt(nextCoins, 10);
-              if (!isNaN(amount)) {
-                localStorage.setItem('tenali-coins', String(amount));
-                window.location.reload();
-              }
-            }
-          }}
-        >
-          🪙 Set Coins
-        </button>
+
         <button 
           style={{ fontSize: '0.75rem', padding: '6px 12px', background: 'var(--clr-hover-strong)', border: '1px solid var(--clr-border)', color: 'var(--clr-text)', borderRadius: '6px', cursor: 'pointer' }}
           onClick={() => {
@@ -36712,7 +36695,7 @@ function GKApp({ onBack }) {
  * @param {Object} props
  * @param {Function} props.onBack - Callback to return to home menu
  */
-function AdditionApp({ onBack, completedTopics = [], markTopicCompleted, setTransferTopic, setMode }) {
+function AdditionApp({ onBack, completedTopics = [], goldMastery = [], markTopicCompleted, setTransferTopic, setMode }) {
   // Difficulty level: 'easy' (1-digit), 'medium' (2-digit), 'hard' (3-digit), 'extrahard' (4-digit)
   const [difficulty, setDifficulty] = useState('easy')
   // Adaptive mode enabled?
@@ -36933,7 +36916,11 @@ function AdditionApp({ onBack, completedTopics = [], markTopicCompleted, setTran
         {completedTopics.includes('addition') && (
           <div className="transfer-cta-box" style={{ marginTop: '20px', padding: '16px', background: 'var(--clr-hover, rgba(255,255,255,0.03))', borderRadius: '10px', border: '1px solid var(--clr-border)', textAlign: 'center' }}>
             <p style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
-              🎉 You have completed Stage 3 Practice for this topic!
+              {goldMastery.includes('addition') ? (
+                <>🥇 You have achieved Gold Mastery for this topic!</>
+              ) : (
+                <>🎉 You have completed Stage 3 Practice for this topic!</>
+              )}
             </p>
             <button 
               className="btn-transfer-cta" 
@@ -36943,7 +36930,11 @@ function AdditionApp({ onBack, completedTopics = [], markTopicCompleted, setTran
               }}
               style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              🚀 Start Transfer Challenge (Stage 4) 🥇
+              {goldMastery.includes('addition') ? (
+                <>🔄 Revisit Transfer Challenge (Stage 4) 🥇</>
+              ) : (
+                <>🚀 Start Transfer Challenge (Stage 4) 🥇</>
+              )}
             </button>
           </div>
         )}
@@ -39622,43 +39613,26 @@ function TransferChallengeApp({ topicKey, onBack, completedTopics, goldMastery, 
       setExplanation(data.explanation || '')
       setTransferMapping(data.transferMapping || '')
       
+      const isAllCorrect = (questionNumber === totalQ) && results.every(r => r.correct) && data.correct
+
       if (data.correct) {
         setFeedback(`Correct! Expected: ${data.answer}`)
-        setResults(prev => [...prev, {
-          prompt: question.prompt,
-          userAnswer: answer.trim(),
-          correctAnswer: data.answer,
-          correct: true,
-          time: timeTaken
-        }])
-        
-        const token = localStorage.getItem('tenali-auth-token')
-        if (!token) {
-          const guestCorrectCountKey = `tenali-guest-transfer-correct-${topicKey}`
-          const currentCount = parseInt(localStorage.getItem(guestCorrectCountKey) || '0', 10) + 1
-          localStorage.setItem(guestCorrectCountKey, String(currentCount))
-          
-          if (currentCount >= 2 && !goldMastery.includes(topicKey)) {
-            markGoldMastery(topicKey)
-            updateCoins(75)
-            setGoldMasteryEarned(true)
-          }
-        } else {
-          if (data.goldMasteryEarned) {
-            markGoldMastery(topicKey)
-            updateCoins(75)
-            setGoldMasteryEarned(true)
-          }
-        }
       } else {
         setFeedback(`Incorrect. Expected: ${data.answer}`)
-        setResults(prev => [...prev, {
-          prompt: question.prompt,
-          userAnswer: answer.trim(),
-          correctAnswer: data.answer,
-          correct: false,
-          time: timeTaken
-        }])
+      }
+
+      setResults(prev => [...prev, {
+        prompt: question.prompt,
+        userAnswer: answer.trim(),
+        correctAnswer: data.answer,
+        correct: data.correct,
+        time: timeTaken
+      }])
+
+      if (isAllCorrect) {
+        markGoldMastery(topicKey)
+        updateCoins(150)
+        setGoldMasteryEarned(true)
       }
     } catch (e) {
       submittedRef.current = false
@@ -39683,7 +39657,6 @@ function TransferChallengeApp({ topicKey, onBack, completedTopics, goldMastery, 
     
     if (nextLevel > 1) {
       setHintsUsed(prev => prev + 1)
-      updateCoins(-10)
     }
   }
 
@@ -39723,7 +39696,7 @@ function TransferChallengeApp({ topicKey, onBack, completedTopics, goldMastery, 
         <div className="welcome-box">
           <p className="welcome-text">
             Test whether you can apply your math skills to real-world scenarios. 
-            Earn your <strong>Gold Mastery Badge 🥇</strong> and <strong>+75 Sun Coins! 🪙</strong>
+            Earn your <strong>Gold Mastery Badge 🥇</strong>!
           </p>
           <div className="transfer-header" style={{ maxWidth: '400px', margin: '0 auto 20px' }}>
             <h2>Ready to transfer?</h2>
@@ -39770,7 +39743,7 @@ function TransferChallengeApp({ topicKey, onBack, completedTopics, goldMastery, 
                       fontSize: '0.85rem'
                     }}
                   >
-                    💡 Hint {showHintLevel === 0 ? '(Free)' : `Level ${showHintLevel + 1} (-10 coins)`}
+                    💡 Hint Level {showHintLevel + 1}
                   </button>
                 </div>
               )}
@@ -39816,7 +39789,7 @@ function TransferChallengeApp({ topicKey, onBack, completedTopics, goldMastery, 
           {revealed && (
             <div className="transfer-feedback-panel" style={{ borderLeftColor: isCorrect ? 'var(--clr-correct, #4caf50)' : 'var(--clr-wrong, #f44336)' }}>
               <div style={{ fontWeight: 700, fontSize: '1.1rem', color: isCorrect ? 'var(--clr-correct)' : 'var(--clr-wrong)' }}>
-                {isCorrect ? '✅ Well done!' : '❌ Let\'s review this:'}
+                {isCorrect ? '✅ Well done!' : "❌ Let's review this:"}
               </div>
               <div className="transfer-feedback-explanation">{explanation}</div>
               <div className="transfer-mapping-panel">
@@ -39846,8 +39819,7 @@ function TransferChallengeApp({ topicKey, onBack, completedTopics, goldMastery, 
               <div className="gold-badge-shimmer">🥇</div>
               <h2 style={{ marginTop: '16px', color: '#F5A623' }}>Gold Mastery Achieved!</h2>
               <p className="welcome-text" style={{ margin: '12px 0 24px' }}>
-                Awesome transfer! You successfully solved the real-world word problems and earned 
-                <strong> +75 Sun Coins! 🪙</strong>
+                Awesome transfer! You successfully solved the real-world word problems and earned your Gold Mastery Badge!
               </p>
             </div>
           ) : (
@@ -39878,14 +39850,6 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
     const [difficulty, setDifficulty] = useState(diffs[0])
     const topicKey = apiPath.replace('-api', '')
 
-    useEffect(() => {
-      if (finished) {
-        const pass = score / totalQ >= 0.8
-        if (pass && markTopicCompleted) {
-          markTopicCompleted(topicKey)
-        }
-      }
-    }, [finished])
     const [isAdaptive, setIsAdaptive] = useState(false)
     const [adaptScore, setAdaptScore] = useState(0) // 0.0 (easy) → 3.0 (extrahard)
     const [reportAck, setReportAck] = useState('')
@@ -39910,6 +39874,15 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
     // Guards against double-submit and double-advance race conditions
     const submittedRef = useRef(false)
     const advancedRef = useRef(false)
+
+    useEffect(() => {
+      if (finished) {
+        const pass = score / totalQ >= 0.8
+        if (pass && markTopicCompleted) {
+          markTopicCompleted(topicKey)
+        }
+      }
+    }, [finished])
 
     const effectiveDifficulty = () => isAdaptive ? adaptiveLevel(adaptScoreRef.current) : difficulty
 
@@ -40071,7 +40044,11 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
           {completedTopics.includes(topicKey) && (
             <div className="transfer-cta-box" style={{ marginTop: '20px', padding: '16px', background: 'var(--clr-hover, rgba(255,255,255,0.03))', borderRadius: '10px', border: '1px solid var(--clr-border)', textAlign: 'center' }}>
               <p style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
-                🎉 You have completed Stage 3 Practice for this topic!
+                {goldMastery.includes(topicKey) ? (
+                  <>🥇 You have achieved Gold Mastery for this topic!</>
+                ) : (
+                  <>🎉 You have completed Stage 3 Practice for this topic!</>
+                )}
               </p>
               <button 
                 className="btn-transfer-cta" 
@@ -40081,7 +40058,11 @@ function makeQuizApp({ title, subtitle, apiPath, diffLabels, placeholders, tip, 
                 }}
                 style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                🚀 Start Transfer Challenge (Stage 4) 🥇
+                {goldMastery.includes(topicKey) ? (
+                  <>🔄 Revisit Transfer Challenge (Stage 4) 🥇</>
+                ) : (
+                  <>🚀 Start Transfer Challenge (Stage 4) 🥇</>
+                )}
               </button>
             </div>
           )}
@@ -43438,7 +43419,11 @@ function RatioApp({ onBack, completedTopics = [], goldMastery = [], markTopicCom
         {completedTopics.includes('ratio') && (
           <div className="transfer-cta-box" style={{ marginTop: '20px', padding: '16px', background: 'var(--clr-hover, rgba(255,255,255,0.03))', borderRadius: '10px', border: '1px solid var(--clr-border)', textAlign: 'center' }}>
             <p style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
-              🎉 You have completed Stage 3 Practice for this topic!
+              {goldMastery.includes('ratio') ? (
+                <>🥇 You have achieved Gold Mastery for this topic!</>
+              ) : (
+                <>🎉 You have completed Stage 3 Practice for this topic!</>
+              )}
             </p>
             <button 
               className="btn-transfer-cta" 
@@ -43448,7 +43433,11 @@ function RatioApp({ onBack, completedTopics = [], goldMastery = [], markTopicCom
               }}
               style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              🚀 Start Transfer Challenge (Stage 4) 🥇
+              {goldMastery.includes('ratio') ? (
+                <>🔄 Revisit Transfer Challenge (Stage 4) 🥇</>
+              ) : (
+                <>🚀 Start Transfer Challenge (Stage 4) 🥇</>
+              )}
             </button>
           </div>
         )}
@@ -43633,7 +43622,11 @@ function PercentApp({ onBack, completedTopics = [], goldMastery = [], markTopicC
         {completedTopics.includes('percent') && (
           <div className="transfer-cta-box" style={{ marginTop: '20px', padding: '16px', background: 'var(--clr-hover, rgba(255,255,255,0.03))', borderRadius: '10px', border: '1px solid var(--clr-border)', textAlign: 'center' }}>
             <p style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
-              🎉 You have completed Stage 3 Practice for this topic!
+              {goldMastery.includes('percent') ? (
+                <>🥇 You have achieved Gold Mastery for this topic!</>
+              ) : (
+                <>🎉 You have completed Stage 3 Practice for this topic!</>
+              )}
             </p>
             <button 
               className="btn-transfer-cta" 
@@ -43643,7 +43636,11 @@ function PercentApp({ onBack, completedTopics = [], goldMastery = [], markTopicC
               }}
               style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              🚀 Start Transfer Challenge (Stage 4) 🥇
+              {goldMastery.includes('percent') ? (
+                <>🔄 Revisit Transfer Challenge (Stage 4) 🥇</>
+              ) : (
+                <>🚀 Start Transfer Challenge (Stage 4) 🥇</>
+              )}
             </button>
           </div>
         )}
@@ -44438,7 +44435,11 @@ function FractionAddApp({ onBack, completedTopics = [], goldMastery = [], markTo
         {completedTopics.includes('fractionadd') && (
           <div className="transfer-cta-box" style={{ marginTop: '20px', padding: '16px', background: 'var(--clr-hover, rgba(255,255,255,0.03))', borderRadius: '10px', border: '1px solid var(--clr-border)', textAlign: 'center' }}>
             <p style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
-              🎉 You have completed Stage 3 Practice for this topic!
+              {goldMastery.includes('fractionadd') ? (
+                <>🥇 You have achieved Gold Mastery for this topic!</>
+              ) : (
+                <>🎉 You have completed Stage 3 Practice for this topic!</>
+              )}
             </p>
             <button 
               className="btn-transfer-cta" 
@@ -44448,7 +44449,11 @@ function FractionAddApp({ onBack, completedTopics = [], goldMastery = [], markTo
               }}
               style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              🚀 Start Transfer Challenge (Stage 4) 🥇
+              {goldMastery.includes('fractionadd') ? (
+                <>🔄 Revisit Transfer Challenge (Stage 4) 🥇</>
+              ) : (
+                <>🚀 Start Transfer Challenge (Stage 4) 🥇</>
+              )}
             </button>
           </div>
         )}
