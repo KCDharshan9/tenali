@@ -507,12 +507,12 @@ const decimalsScenarios = [
       return {
         scenarioId: 'dec-transfer-001',
         context: 'sports',
-        prompt: `In a 100-meter sprint, the winner completes the race in ${t1} seconds. The runner-up finishes trailing the winner by ${gap} seconds. What is the runner-up's race completion time in seconds?`,
+        prompt: `During a school track meet, the winner of the 100-meter sprint clocks a time of ${t1} seconds. The runner-up crosses the finish line trailing the winner by ${gap} seconds. What is the runner-up's race completion time in seconds?`,
         variables: vars,
         hints: [
-          `Trailing the winner means taking longer to finish, so the runner-up's time must be greater than the winner's time.`,
-          `Line up the decimal points of ${t1} and ${gap} before adding.`,
-          `Calculate ${t1} + ${gap} to find the final time.`
+          `Hint 1 - Observation: Identify the winner's race duration. Does trailing the winner mean taking more or less time to finish?`,
+          `Hint 2 - Strategy: Add the trailing delay time to the winning time to find the runner-up's time. Make sure to align the decimal places.`,
+          `Hint 3 - Gentle Nudge: Think of the winning time as the starting point, and increase it by the decimal gap value.`
         ]
       };
     },
@@ -537,12 +537,12 @@ const decimalsScenarios = [
       return {
         scenarioId: 'dec-transfer-002',
         context: 'cooking',
-        prompt: `A baker needs a total of ${target} kg of flour mix. They weigh out ${c1} kg of wheat flour and ${c2} kg of ragi flour. How many more kg of flour must they add to reach the target weight?`,
+        prompt: `A baker needs a total of ${target} kg of mixed flour for a recipe. They weigh out ${c1} kg of wheat flour and ${c2} kg of ragi flour into a bowl. How many more kg of flour must they add to reach the exact target weight?`,
         variables: vars,
         hints: [
-          `Find the combined weight of wheat and ragi flour by adding ${c1} and ${c2} first.`,
-          `The sum of the weighed flours is ${Math.round((c1 + c2) * 100) / 100} kg.`,
-          `Subtract this sum from the target weight of ${target} kg.`
+          `Hint 1 - Observation: What is the total target weight of flour needed, and how much wheat and ragi flour have already been weighed?`,
+          `Hint 2 - Strategy: Find the combined weight of the flour already in the bowl, then find the difference between that total and the target.`,
+          `Hint 3 - Gentle Nudge: Combine the decimal values of the weighed flours first before calculating what remains.`
         ]
       };
     },
@@ -570,12 +570,12 @@ const hcflcmScenarios = [
       return {
         scenarioId: 'hcflcm-transfer-001',
         context: 'pocketmoney',
-        prompt: `Meena has ${a} chocolates and ${b} juice boxes. She wants to divide them into identical gift bags for her friends with none left over. What is the maximum number of bags she can prepare?`,
+        prompt: `Meena has ${a} crayons and ${b} sketch pens. She wants to package them into identical coloring kits to distribute to children in a park. What is the maximum number of kits she can prepare without any leftover items?`,
         variables: vars,
         hints: [
-          `To divide both items equally without any remainders, the number of bags must divide both ${a} and ${b}.`,
-          `To find the maximum possible number of bags, you must find the Highest Common Factor (HCF) of ${a} and ${b}.`,
-          `Find the largest integer that divides both ${a} and ${b} perfectly.`
+          `Hint 1 - Observation: The number of kits must divide both the crayons and sketch pens evenly so that nothing is left over.`,
+          `Hint 2 - Strategy: What mathematical tool helps you find the greatest number that can divide two integers perfectly?`,
+          `Hint 3 - Gentle Nudge: Think of finding the highest common factor of the two quantities.`
         ]
       };
     },
@@ -599,12 +599,12 @@ const hcflcmScenarios = [
       return {
         scenarioId: 'hcflcm-transfer-002',
         context: 'sports',
-        prompt: `Two runners, Arjun and Priya, start running laps around a circular track at the same time from the starting line. Arjun completes a lap every ${l1} seconds, and Priya completes a lap every ${l2} seconds. After how many seconds will they meet at the starting line again for the first time?`,
+        prompt: `Two toy train sets start side-by-side on parallel concentric tracks. Train A completes a full circuit every ${l1} seconds, while Train B completes a circuit every ${l2} seconds. After how many seconds will they align side-by-side at the starting line again for the first time?`,
         variables: vars,
         hints: [
-          `They will meet again at a time that is a common multiple of both runners' lap times.`,
-          `To find the first time they meet, calculate the Least Common Multiple (LCM) of ${l1} and ${l2} seconds.`,
-          `Find the smallest number that is a multiple of both ${l1} and ${l2}.`
+          `Hint 1 - Observation: The trains pass the line at intervals that are multiples of their loop times. How do these intervals repeat?`,
+          `Hint 2 - Strategy: To find when they line up for the very first time, what mathematical concept helps you find the smallest common multiple of two times?`,
+          `Hint 3 - Gentle Nudge: Look for the least common multiple of the two loop durations.`
         ]
       };
     },
@@ -633,12 +633,12 @@ const lineareqScenarios = [
       return {
         scenarioId: 'lineq-transfer-001',
         context: 'shopping',
-        prompt: `An online bookstore charges a flat shipping fee of ₹${f} per order plus ₹${c} for every notebook purchased. If Ananya's total bill is ₹${total}, how many notebooks did she order?`,
+        prompt: `An online book distributor charges a flat delivery fee of ₹${f} per box, plus ₹${c} for every sketchbook purchased. If Ananya's total invoice is ₹${total}, how many sketchbooks did she order?`,
         variables: vars,
         hints: [
-          `Express the scenario as an equation: ${f} + ${c} × (number of notebooks) = ${total}.`,
-          `Subtract the flat shipping fee ₹${f} from the total bill ₹${total} to find the cost of only notebooks.`,
-          `Divide that value (${total - f}) by the cost of one notebook (₹${c}) to find the quantity.`
+          `Hint 1 - Observation: Identify the fixed cost that Ananya pays regardless of the sketchbooks, and check the total amount of the invoice.`,
+          `Hint 2 - Strategy: Subtract the fixed delivery fee from the total invoice, then find how many sketchbooks fit into the remaining cost.`,
+          `Hint 3 - Gentle Nudge: Isolate the total cost of the sketchbooks first before dividing by the price of a single sketchbook.`
         ]
       };
     },
@@ -666,12 +666,12 @@ const lineareqScenarios = [
       return {
         scenarioId: 'lineq-transfer-002',
         context: 'travel',
-        prompt: `A taxi ride charges a base fare of ₹${base} plus ₹${rate} per kilometer. If Priya's total taxi fare is ₹${total}, what was the distance of her journey in kilometers?`,
+        prompt: `A family rents an auto-rickshaw that charges a base hire fare of ₹${base} plus ₹${rate} per kilometer traveled. If their total fare is ₹${total}, how many kilometers did they travel?`,
         variables: vars,
         hints: [
-          `Formulate the equation: ${base} + ${rate} × (distance) = ${total}.`,
-          `Subtract the fixed base fare of ₹${base} from the total fare.`,
-          `Divide the remaining fare by the kilometer rate of ₹${rate}.`
+          `Hint 1 - Observation: What is the constant starting cost of the rickshaw hire, and how much did they pay in total?`,
+          `Hint 2 - Strategy: Deduct the starting hire fare from the total amount paid, then determine the distance based on the rate per kilometer.`,
+          `Hint 3 - Gentle Nudge: Find the cost associated only with the distance traveled, and then divide it by the price per kilometer.`
         ]
       };
     },
@@ -701,12 +701,12 @@ const sdtScenarios = [
       return {
         scenarioId: 'sdt-transfer-001',
         context: 'travel',
-        prompt: `A freight train leaves Chennai Central traveling at ${s1} km/h. ${delay} hours later, an express passenger train leaves the same station in the same direction on a parallel track, traveling at ${s2} km/h. How many hours will it take the express train to catch up?`,
+        prompt: `A slower freight train departs Chennai station traveling at ${s1} km/h. Exactly ${delay} hours later, a fast express train leaves the same station in the same direction on a parallel track at ${s2} km/h. How many hours will it take the express train to catch up to the freight train?`,
         variables: vars,
         hints: [
-          `Find how far the freight train traveled before the express train started. That distance is Speed × Time = ${s1} × ${delay} km.`,
-          `The express train catches up at a relative speed of ${s2} - ${s1} = ${s2 - s1} km/h.`,
-          `Divide the lead distance by the relative speed to find the catch-up time.`
+          `Hint 1 - Observation: How much head start distance does the freight train gain before the express train leaves the station?`,
+          `Hint 2 - Strategy: Calculate that head start distance. Then, find the difference in speed between the two trains to see how fast the gap closes.`,
+          `Hint 3 - Gentle Nudge: Divide the head start distance by the difference in speed of the two trains to find the time needed.`
         ]
       };
     },
@@ -733,12 +733,12 @@ const sdtScenarios = [
       return {
         scenarioId: 'sdt-transfer-002',
         context: 'travel',
-        prompt: `A car travels from City A to City B at an average speed of ${s1} km/h, and returns along the same route at ${s2} km/h. What is the average speed for the entire round trip in km/h?`,
+        prompt: `A school bus travels to a museum at an average speed of ${s1} km/h, and returns along the exact same highway at an average speed of ${s2} km/h. What is the average speed for the entire round trip in km/h?`,
         variables: vars,
         hints: [
-          `The average speed is NOT the simple average of ${s1} and ${s2}!`,
-          `Let the distance between cities be D. Total distance is 2D. Total time is (D / ${s1}) + (D / ${s2}).`,
-          `Use the harmonic mean formula for equal distances: Average Speed = 2 × S1 × S2 / (S1 + S2).`
+          `Hint 1 - Observation: Remember that the bus spends different amounts of time traveling at each speed because the speeds are different.`,
+          `Hint 2 - Strategy: The average speed is the total round-trip distance divided by the total time. You can use the harmonic mean formula since the distance is identical in both directions.`,
+          `Hint 3 - Gentle Nudge: Set up the formula that takes twice the product of the two speeds and divides it by their sum.`
         ]
       };
     },
@@ -769,12 +769,12 @@ const probScenarios = [
       return {
         scenarioId: 'prob-transfer-001',
         context: 'sports',
-        prompt: `In a school cricket league, a team won ${w} matches, drew ${d} matches, and lost ${l} matches. If one match is chosen at random, what is the probability (as a simplified fraction) that the team did not lose?`,
+        prompt: `In a school chess tournament, a player won ${w} games, drew ${d} games, and lost ${l} games. If one game is reviewed at random, what is the probability (as a simplified fraction) that the player did not lose this game?`,
         variables: vars,
         hints: [
-          `Find the total matches played by adding wins, draws, and losses.`,
-          `Calculate the number of games they 'did not lose' (wins + draws = ${w + d}).`,
-          `Write as a fraction: (favorable outcomes) / (total outcomes) and simplify.`
+          `Hint 1 - Observation: How many total games did the player participate in, and which outcomes count as not losing?`,
+          `Hint 2 - Strategy: Calculate the total number of games played, and count the wins and draws together. Express this as a fraction of the total.`,
+          `Hint 3 - Gentle Nudge: Find the total number of outcomes first, then write the fraction and simplify it by dividing the numerator and denominator by their greatest common divisor.`
         ]
       };
     },
@@ -806,12 +806,12 @@ const probScenarios = [
       return {
         scenarioId: 'prob-transfer-002',
         context: 'pocketmoney',
-        prompt: `A jar contains ${r} red marbles, ${b} blue marbles, and ${g} green marbles. If you pull out one marble at random, what is the probability (as a simplified fraction) of drawing a red marble?`,
+        prompt: `A pouch contains ${r} red tokens, ${b} blue tokens, and ${g} green tokens for a board game. If you draw one token without looking, what is the probability (as a simplified fraction) of drawing a red token?`,
         variables: vars,
         hints: [
-          `Find the total number of marbles in the jar by adding the marbles: ${r} + ${b} + ${g}.`,
-          `The number of red marbles is ${r}.`,
-          `Form a fraction of red marbles over the total count and reduce it to simplest form.`
+          `Hint 1 - Observation: Look at how many tokens of each color are in the pouch. What is the total count of all tokens combined?`,
+          `Hint 2 - Strategy: Find the total number of items to define the denominator, and use the count of red tokens as the numerator. Simplify the fraction.`,
+          `Hint 3 - Gentle Nudge: Start by adding up all the colored tokens to see how many total outcomes are possible.`
         ]
       };
     },
@@ -844,12 +844,12 @@ const mensurScenarios = [
       return {
         scenarioId: 'mens-transfer-001',
         context: 'cooking',
-        prompt: `A rectangular baking tin has a length of ${l} cm, a width of ${w} cm, and a depth of ${h} cm. If a chef lines the inner bottom and the four vertical sides with baking paper, what is the total area of paper needed in cm²?`,
+        prompt: `A rectangular baking tin is ${l} cm long, ${w} cm wide, and ${h} cm deep. A chef wants to line the inside bottom and all four side walls with baking paper. What is the total area of paper needed in cm²?`,
         variables: vars,
         hints: [
-          `The baking tin has a base and 4 vertical walls, but no top cover (open box).`,
-          `The bottom area is L × W = ${l} × ${w} = ${l * w} cm².`,
-          `The 4 walls have a combined area of 2 × H × (L + W) = 2 × ${h} × (${l} + ${w}) cm².`
+          `Hint 1 - Observation: Identify the five faces of the baking tin that need paper (the bottom base and the four vertical sides). Note that there is no top lid.`,
+          `Hint 2 - Strategy: Calculate the area of the bottom rectangular face, and find the combined area of the four side walls, then add these areas together.`,
+          `Hint 3 - Gentle Nudge: Find the area of the base first, then use the height and perimeter of the base to find the side wall areas.`
         ]
       };
     },
@@ -876,12 +876,12 @@ const mensurScenarios = [
       return {
         scenarioId: 'mens-transfer-002',
         context: 'travel',
-        prompt: `A cylindrical water tanker train coach has a base radius of ${r} meters and a height (length) of ${h} meters. What is the total volume of water in cubic meters (m³) it can hold? (Use π = 22/7)`,
+        prompt: `A cylindrical water storage tank at a railway station has a base radius of ${r} meters and a height of ${h} meters. What is the total volume of water in cubic meters it can hold? (Use π = 22/7)`,
         variables: vars,
         hints: [
-          `A cylinder's volume is given by the formula: Volume = π × r² × h.`,
-          `Substitute r = ${r}, h = ${h}, and π = 22/7.`,
-          `Calculate (22/7) × ${r} × ${r} × ${h} to find the volume.`
+          `Hint 1 - Observation: Identify the radius of the circular base and the height of the cylindrical tank.`,
+          `Hint 2 - Strategy: Use the volume formula for a cylinder: multiply the area of the circular base by the height.`,
+          `Hint 3 - Gentle Nudge: Calculate the base area first by squaring the radius and multiplying it by the given value of π.`
         ]
       };
     },
@@ -910,12 +910,12 @@ const quadraticScenarios = [
       return {
         scenarioId: 'quad-transfer-001',
         context: 'cooking',
-        prompt: `A chef lays out cookie dough circles on a rectangular tray. The number of rows is ${diff} more than the number of columns. If the tray fits exactly ${total} cookies in total, how many rows are there?`,
+        prompt: `A gardener is planting flower bulbs in rows and columns on a rectangular plot. The number of rows is ${diff} more than the number of columns. If the plot has space for exactly ${total} bulbs in total, how many rows are there?`,
         variables: vars,
         hints: [
-          `Let the number of columns be x. The number of rows is x + ${diff}.`,
-          `The total cookies is rows × columns: x(x + ${diff}) = ${total}.`,
-          `This expands to the quadratic equation: x² + ${diff}x - ${total} = 0. Solve for positive x.`
+          `Hint 1 - Observation: Express the relationship between the rows and columns using a variable. Let columns be x.`,
+          `Hint 2 - Strategy: Write an equation for the total capacity by multiplying the rows by the columns. This will form a quadratic equation.`,
+          `Hint 3 - Gentle Nudge: Expand the equation into standard quadratic form and solve for the positive value of the columns first.`
         ]
       };
     },
@@ -946,12 +946,12 @@ const quadraticScenarios = [
       return {
         scenarioId: 'quad-transfer-002',
         context: 'sports',
-        prompt: `A cricket ball is hit straight up into the air. Its height in meters after t seconds is modeled by the equation: h = ${v}t - 5t². How many seconds does it take for the ball to land back on the ground?`,
+        prompt: `A soccer ball is kicked straight up into the air. Its height in meters after t seconds is modeled by the height function: h = ${v}t - 5t². How many seconds will it take for the ball to return and touch the ground?`,
         variables: vars,
         hints: [
-          `The ball lands back on the ground when its height is 0, so set h = 0.`,
-          `This gives the equation: ${v}t - 5t² = 0. Factor out t.`,
-          `The factored form is: t(${v} - 5t) = 0. Find the non-zero value of t.`
+          `Hint 1 - Observation: What is the altitude or height value of the soccer ball at the exact moment it touches the ground?`,
+          `Hint 2 - Strategy: Set the height variable h to zero, which gives you a quadratic equation. What algebraic methods can you use to solve for t?`,
+          `Hint 3 - Gentle Nudge: Try factoring out the common time variable t from the terms to find the non-zero solution.`
         ]
       };
     },
@@ -981,12 +981,12 @@ const matrixScenarios = [
       return {
         scenarioId: 'mat-transfer-001',
         context: 'shopping',
-        prompt: `A movie theater charges ₹${pa} for an adult ticket and ₹${pc} for a child ticket. On Friday, they sell ${ta} adult tickets and ${tc} child tickets. Write this as a matrix multiplication of a Row matrix and a Column matrix, and find the total ticket revenue in rupees.`,
+        prompt: `A school concert charges ₹${pa} for an adult ticket and ₹${pc} for a student ticket. They sell ${ta} adult tickets and ${tc} student tickets. Write this as a matrix multiplication of a Row matrix of prices and a Column matrix of quantities, and find the total revenue in rupees.`,
         variables: vars,
         hints: [
-          `Write prices as a row vector [${pa}, ${pc}] and tickets sold as a column vector [${ta}, ${tc}]^T.`,
-          `Multiply prices by quantities element-by-element: (${pa} × ${ta}) + (${pc} × ${tc}).`,
-          `Calculate the sum to get the total ticket revenue.`
+          `Hint 1 - Observation: Identify the two sets of values: the price categories (adult and student) and the quantities of tickets sold.`,
+          `Hint 2 - Strategy: Form a 1x2 row matrix for the prices and a 2x1 column matrix for the quantities. Multiply corresponding elements and add.`,
+          `Hint 3 - Gentle Nudge: Multiply the first price by the first quantity, then add it to the product of the second price and quantity.`
         ]
       };
     },
@@ -1013,12 +1013,12 @@ const matrixScenarios = [
       return {
         scenarioId: 'mat-transfer-002',
         context: 'sports',
-        prompt: `A sports shop has two branches. Branch A has ${a1} cricket bats and ${a2} footballs. Branch B has ${b1} cricket bats and ${b2} footballs. Represent the inventory of each branch as a 1x2 row matrix, and calculate the combined total inventory matrix for both branches.`,
+        prompt: `A sports shop has two branches. Branch A has ${a1} cricket bats and ${a2} footballs. Branch B has ${b1} cricket bats and ${b2} footballs. Represent each branch's stock as a 1x2 row matrix, and find the combined inventory matrix. (Submit as "bats, footballs")`,
         variables: vars,
         hints: [
-          `Branch A matrix is [${a1}, ${a2}]. Branch B matrix is [${b1}, ${b2}].`,
-          `To find the combined total inventory matrix, add the corresponding matrix entries.`,
-          `The combined inventory is [(${a1} + ${b1}), (${a2} + ${b2})]. Submit in format: [bats, footballs] e.g. [20, 24] or simply "20, 24".`
+          `Hint 1 - Observation: Identify the stock numbers of bats and footballs for each of the two branches.`,
+          `Hint 2 - Strategy: Form the matrices for both branches. To find the combined inventory, add the corresponding elements of the matrices.`,
+          `Hint 3 - Gentle Nudge: Combine the number of bats from both branches first, then combine the number of footballs.`
         ]
       };
     },
@@ -1046,12 +1046,12 @@ const anglesScenarios = [
       return {
         scenarioId: 'ang-transfer-001',
         context: 'travel',
-        prompt: `Two railway tracks intersect at a crossing. If one of the vertically opposite angles formed is ${a} degrees, what is the value of the adjacent angle?`,
+        prompt: `Two paths intersect in a public garden. If one of the angles at the crossing is ${a} degrees, what is the size of the adjacent angle that lies on the same straight path?`,
         variables: vars,
         hints: [
-          `Angles on a straight line add up to 180 degrees.`,
-          `The vertically opposite angle is also ${a} degrees, but the adjacent angle forms a straight line.`,
-          `Subtract ${a} from 180 to find the adjacent angle.`
+          `Hint 1 - Observation: Check how the two adjacent angles relate to each other along a straight path.`,
+          `Hint 2 - Strategy: Remember that angles forming a straight line are supplementary and always sum to a specific straight-angle value.`,
+          `Hint 3 - Gentle Nudge: Think of finding the difference between a straight line's total angle (180 degrees) and the given angle.`
         ]
       };
     },
@@ -1076,12 +1076,12 @@ const basicarithScenarios = [
       return {
         scenarioId: 'arith-transfer-001',
         context: 'shopping',
-        prompt: `Arjun buys ${a} notebooks at ₹${b} each, and ${c} binders at ₹${d} each. What is his total bill in rupees?`,
+        prompt: `Arjun buys ${a} notebooks at ₹${b} each, and ${c} binders at ₹${d} each for the school year. What is the total cost in rupees?`,
         variables: vars,
         hints: [
-          `Multiply the number of notebooks by their price: ${a} × ${b}.`,
-          `Multiply the number of binders by their price: ${c} × ${d}.`,
-          `Add the two totals to find the overall bill.`
+          `Hint 1 - Observation: Identify the quantities and unit prices for both types of school supplies purchased.`,
+          `Hint 2 - Strategy: Find the cost of each item type separately by multiplying the quantity by its price, then combine the two costs.`,
+          `Hint 3 - Gentle Nudge: Start by calculating the total cost of the notebooks first.`
         ]
       };
     },
@@ -1105,12 +1105,12 @@ const bankingScenarios = [
       return {
         scenarioId: 'bank-transfer-001',
         context: 'pocketmoney',
-        prompt: `Meena opens a Recurring Deposit (RD) account and deposits ₹${p} every month for ${n} months. The bank offers simple interest of ${r}% per annum. What is the total maturity value (Deposited amount + Interest) at the end?`,
+        prompt: `Meena sets up a recurring savings deposit, putting aside ₹${p} in her piggy bank at the start of every month for ${n} months. A reward scheme offers simple interest of ${r}% per annum on her recurring savings. What is the total maturity value (her total deposits plus the interest earned) at the end?`,
         variables: vars,
         hints: [
-          `Total deposit is Principal × Months = ₹${p} × ${n}.`,
-          `Interest is calculated as: I = P × N(N+1)/2 × (1/12) × (R/100).`,
-          `Sum up the total deposit and the interest to find the maturity value.`
+          `Hint 1 - Observation: Identify the monthly amount deposited, the total number of months, and the annual interest rate.`,
+          `Hint 2 - Strategy: Calculate the total principal deposited first. Then, use the recurring deposit interest formula to calculate the accumulated interest before combining them.`,
+          `Hint 3 - Gentle Nudge: Recall that the interest calculation involves the sum of the months from 1 to ${n}.`
         ]
       };
     },
@@ -1142,12 +1142,12 @@ const bearingsScenarios = [
       return {
         scenarioId: 'bear-transfer-001',
         context: 'travel',
-        prompt: `A ship sails from Port A to Port B on a bearing of ${String(b).padStart(3, '0')}°. What bearing should the ship take to return back to Port A from Port B?`,
+        prompt: `A hiker walks from a campsite to a waterfall on a compass bearing of ${String(b).padStart(3, '0')}°. What compass bearing should the hiker follow to return directly from the waterfall to the campsite?`,
         variables: vars,
         hints: [
-          `The return bearing is the back bearing (opposite direction).`,
-          `If the bearing is less than 180°, add 180°. If it is 180° or more, subtract 180°.`,
-          `Since the bearing is ${b}°, calculate the back bearing accordingly.`
+          `Hint 1 - Observation: The return direction is directly opposite to the path taken. What is the angle difference between two opposite directions?`,
+          `Hint 2 - Strategy: To find the back bearing, add or subtract 180 degrees to keep the final bearing value within the valid 0° to 360° circle.`,
+          `Hint 3 - Gentle Nudge: Check if the given bearing is smaller than 180 degrees to decide whether to add or subtract.`
         ]
       };
     },
@@ -1174,12 +1174,12 @@ const binomialScenarios = [
       return {
         scenarioId: 'binom-transfer-001',
         context: 'sports',
-        prompt: `A cricket batsman has a probability of hitting a boundary on any ball. To model outcomes across ${n} balls, we find combinations of successes. What is the binomial coefficient C(${n}, ${k}) (the number of ways to hit exactly ${k} boundaries in ${n} balls)?`,
+        prompt: `A student plays a ring-toss game at a school carnival. In a turn of ${n} tosses, what is the binomial coefficient C(${n}, ${k}), representing the number of different ways to get exactly ${k} successful ring lands?`,
         variables: vars,
         hints: [
-          `The coefficient is given by the combination formula: n! / (k! × (n-k)!).`,
-          `Substitute n = ${n} and k = ${k}.`,
-          `Calculate combinations directly.`
+          `Hint 1 - Observation: Identify the total number of tosses and the target number of successes in this combinations problem.`,
+          `Hint 2 - Strategy: Use the combination formula that divides the total factorials by the product of success and failure factorials.`,
+          `Hint 3 - Gentle Nudge: Calculate the factorial of the total tosses, and divide it by the product of the factorials of successes and the remaining tosses.`
         ]
       };
     },
@@ -1209,12 +1209,12 @@ const boundsScenarios = [
       return {
         scenarioId: 'bounds-transfer-001',
         context: 'cooking',
-        prompt: `A cake recipe requires a flour package weight of ${val} kg, measured to the nearest whole kg. What is the lower bound (minimum possible actual weight) of this flour package?`,
+        prompt: `A recipe calls for a flour sack labeled as weighing ${val} kg, rounded to the nearest whole kilogram. What is the lower bound, or the minimum possible actual weight, of the flour sack?`,
         variables: vars,
         hints: [
-          `To the nearest whole kg, the accuracy is 1 kg.`,
-          `The margin is half of the accuracy: 1 / 2 = 0.5 kg.`,
-          `Subtract 0.5 kg from the measured value of ${val} kg to find the lower bound.`
+          `Hint 1 - Observation: Since the weight is rounded to the nearest whole kilogram, what is the size of the rounding interval?`,
+          `Hint 2 - Strategy: Find the maximum possible rounding error, which is half of the rounding unit, and subtract it to find the smallest value that rounds to this number.`,
+          `Hint 3 - Gentle Nudge: Subtract half of a kilogram from the rounded label weight.`
         ]
       };
     },
@@ -1237,12 +1237,12 @@ const circmeasureScenarios = [
       return {
         scenarioId: 'circ-transfer-001',
         context: 'travel',
-        prompt: `A railway track curves along a sector of a circle of radius ${r} meters. If the track subtends an angle of ${theta} radians at the center, what is the length of the curved track in meters?`,
+        prompt: `A walking path in a circular botanical garden curves along an arc of radius ${r} meters. If the path subtends an angle of ${theta} radians at the center of the garden, what is the length of the path in meters?`,
         variables: vars,
         hints: [
-          `The arc length of a circle is given by: s = r × θ, where θ is in radians.`,
-          `Multiply radius (${r}) by the angle (${theta} radians).`,
-          `No degree conversion is needed since the angle is already in radians.`
+          `Hint 1 - Observation: Identify the radius of the circular path and the central angle. Note that the angle is already given in radians.`,
+          `Hint 2 - Strategy: Recall how arc length is related to the radius and radian angle. Which multiplication formula gives the curved distance directly?`,
+          `Hint 3 - Gentle Nudge: Multiply the radius directly by the radian angle measure.`
         ]
       };
     },
@@ -1264,12 +1264,12 @@ const circlethScenarios = [
       return {
         scenarioId: 'circleth-transfer-001',
         context: 'travel',
-        prompt: `A semi-circular bridge arch has a steel support beam spanning the diameter. Another beam connects a point on the arch to the two ends of the diameter. What is the angle in degrees formed at the arch point?`,
+        prompt: `A semi-circular greenhouse frame has a straight support beam spanning the diameter. Two straight cables connect a point on the curved roof to the two ends of the diameter beam. What is the angle in degrees formed where the two cables meet on the roof?`,
         variables: vars,
         hints: [
-          `Recall Thales' Theorem / Circle Theorems: The angle subtended by a diameter in a semicircle is always a right angle.`,
-          `This geometric rule is independent of the bridge's diameter or height.`,
-          `A right angle is exactly 90 degrees.`
+          `Hint 1 - Observation: Observe that the vertex of the angle lies on the boundary of the semicircle, and its arms end at the endpoints of the diameter.`,
+          `Hint 2 - Strategy: Apply the circle theorem regarding the angle subtended by a diameter inside a semicircle.`,
+          `Hint 3 - Gentle Nudge: Remember that any angle subtended by a diameter at the circle's boundary is always a right angle.`
         ]
       };
     },
@@ -1294,12 +1294,12 @@ const complexScenarios = [
       return {
         scenarioId: 'comp-transfer-001',
         context: 'sports',
-        prompt: `An AC electric circuit has two components in series. The first impedance is Z1 = ${r1} + ${x1}i ohms, and the second is Z2 = ${r2} + ${x2}i ohms. Find the total impedance (series sum Z1 + Z2) in standard form (e.g. 5+7i or simply 5 + 7i).`,
+        prompt: `An AC electrical system has two components connected in series. The first impedance is Z1 = ${r1} + ${x1}i ohms, and the second is Z2 = ${r2} + ${x2}i ohms. Find the total impedance (sum Z1 + Z2) in standard complex form.`,
         variables: vars,
         hints: [
-          `To add complex numbers, add their real parts together and their imaginary parts together.`,
-          `Real part sum: ${r1} + ${r2}.`,
-          `Imaginary part sum: ${x1} + ${x2}.`
+          `Hint 1 - Observation: Identify the real parts (resistance) and imaginary parts (reactance) of both complex numbers.`,
+          `Hint 2 - Strategy: Combine the real parts together, and separately combine the imaginary parts to form the new complex number.`,
+          `Hint 3 - Gentle Nudge: Find the sum of the two real coefficients first, then find the sum of the imaginary coefficients.`
         ]
       };
     },
@@ -1327,12 +1327,12 @@ const congruenceScenarios = [
       return {
         scenarioId: 'cong-transfer-001',
         context: 'cooking',
-        prompt: `A bakery makes triangular pastries. They verify that two pastries have matching side lengths of 6 cm, 8 cm, and 10 cm. Which congruence criterion guarantees they are identical shapes? (Enter SSS, SAS, ASA, or RHS)`,
+        prompt: `A pastry chef cuts triangular cookies. They verify that two cookies have three pairs of matching side lengths: 6 cm, 8 cm, and 10 cm. Which congruence criterion guarantees they are identical? (Enter SSS, SAS, ASA, or RHS)`,
         variables: vars,
         hints: [
-          `The pastries have three pairs of equal sides.`,
-          `Side-Side-Side congruence corresponds to SSS.`,
-          `Verify spelling: enter 'SSS'.`
+          `Hint 1 - Observation: Observe which matching properties (sides or angles) are verified between the two shapes.`,
+          `Hint 2 - Strategy: Choose the criterion that corresponds to comparing three sets of corresponding sides.`,
+          `Hint 3 - Gentle Nudge: The acronym represents Side-Side-Side comparison.`
         ]
       };
     },
@@ -1354,12 +1354,12 @@ const conicsScenarios = [
       return {
         scenarioId: 'conics-transfer-001',
         context: 'travel',
-        prompt: `A satellite communication dish has a parabolic cross-section. Its shape is modeled by y = x² / (4f). If the dish has a diameter (width) of ${width} meters and a depth of 2 meters, what is the focal distance f in meters?`,
+        prompt: `A parabolic sound collector dish has a cross-section modeled by y = x² / (4f). If the dish spans a diameter of ${width} meters and has a depth of 2 meters, what is its focal distance f in meters?`,
         variables: vars,
         hints: [
-          `The boundary point of the dish is at coordinate (x, y) = (Diameter/2, Depth) = (${width / 2}, 2).`,
-          `Substitute x = ${width / 2} and y = 2 into y = x² / (4f).`,
-          `Solve the equation: 2 = ${width / 2}² / (4f).`
+          `Hint 1 - Observation: Find the coordinates of the edge of the dish. What is the distance from the center line (x) and the depth (y)?`,
+          `Hint 2 - Strategy: Substitute the edge coordinates (half the width, depth) into the parabolic equation and solve for the variable f.`,
+          `Hint 3 - Gentle Nudge: Use the value of half the diameter as your x-value and the depth as your y-value in the formula.`
         ]
       };
     },
@@ -1390,12 +1390,12 @@ const coordgeomScenarios = [
       return {
         scenarioId: 'coord-transfer-001',
         context: 'travel',
-        prompt: `A new gas pipeline is laid in a straight line between Station A at coordinates (${x1}, ${y1}) and Station B at (${x2}, ${y2}). What are the coordinates of the midpoint where a relief valve should be placed? (Submit as x, y e.g. 5, 7)`,
+        prompt: `A straight walking trail connects Ranger Station A at coordinates (${x1}, ${y1}) and Ranger Station B at (${x2}, ${y2}). What are the coordinates of the midpoint where a water fountain should be built? (Submit as x, y)`,
         variables: vars,
         hints: [
-          `Use the midpoint formula: Midpoint = ((x1 + x2)/2, (y1 + y2)/2).`,
-          `X coordinate: (${x1} + ${x2}) / 2.`,
-          `Y coordinate: (${y1} + ${y2}) / 2.`
+          `Hint 1 - Observation: Identify the starting and ending coordinates of the path.`,
+          `Hint 2 - Strategy: Find the average of the x-coordinates and the average of the y-coordinates to determine the central coordinates.`,
+          `Hint 3 - Gentle Nudge: Add the two x-values and divide by 2, then do the same for the two y-values.`
         ]
       };
     },
@@ -1425,12 +1425,12 @@ const diffScenarios = [
       return {
         scenarioId: 'diff-transfer-001',
         context: 'shopping',
-        prompt: `A company's total revenue in rupees from selling x units is given by R(x) = -${a}x² + ${b}x + 500. What is the marginal revenue (rate of change of revenue dR/dx) when they sell exactly ${x} units?`,
+        prompt: `A local workshop's revenue in rupees is modeled by the function R(x) = -${a}x² + ${b}x + 500. What is the marginal revenue (the derivative or rate of change dR/dx) when they produce and sell exactly ${x} items?`,
         variables: vars,
         hints: [
-          `Find the derivative of the revenue function R(x).`,
-          `The derivative of R(x) is R'(x) = -2 × ${a}x + ${b}.`,
-          `Substitute x = ${x} into the derivative.`
+          `Hint 1 - Observation: Identify the revenue function R(x) and the specific production level x.`,
+          `Hint 2 - Strategy: Find the derivative function R'(x) first using the power rule, then evaluate it at the given number of items.`,
+          `Hint 3 - Gentle Nudge: Differentiate the quadratic terms to get a linear expression, then plug in the value of x.`
         ]
       };
     },
@@ -1456,12 +1456,12 @@ const diffeqScenarios = [
       return {
         scenarioId: 'diffeq-transfer-001',
         context: 'sports',
-        prompt: `A thermal cooling model is represented by the differential equation: (d²T/dt²)³ - 5(dT/dt) + 2T = 0. What is the order of this differential equation?`,
+        prompt: `A physical model for the temperature change of a cooling engine is described by the differential equation: (d²T/dt²)³ - 5(dT/dt) + 2T = 0. What is the order of this differential equation?`,
         variables: vars,
         hints: [
-          `Order is the highest derivative present in the equation.`,
-          `The highest derivative in this equation is d²T/dt² (the second derivative).`,
-          `The order is therefore 2.`
+          `Hint 1 - Observation: Look at all the derivative terms in the equation. Which one represents the highest rate of rate of change?`,
+          `Hint 2 - Strategy: Recall that the order of a differential equation is determined by the highest derivative present, regardless of the power it is raised to.`,
+          `Hint 3 - Gentle Nudge: Find whether a first derivative or a second derivative is the highest level derivative in this formula.`
         ]
       };
     },
@@ -1486,12 +1486,12 @@ const funcevalScenarios = [
       return {
         scenarioId: 'func-transfer-001',
         context: 'shopping',
-        prompt: `A factory's production cost is modeled by the function C(x, y) = ${a}x + ${b}y + 120. Find the total production cost in rupees if they produce x = ${x} units of item A and y = ${y} units of item B.`,
+        prompt: `A school craft workshop calculates its budget in rupees using the cost function C(x, y) = ${a}x + ${b}y + 120. Find the total workshop cost if they make x = ${x} clay pots and y = ${y} wooden toys.`,
         variables: vars,
         hints: [
-          `Evaluate the function C(x, y) by substituting x = ${x} and y = ${y}.`,
-          `Calculate: ${a} × ${x} + ${b} × ${y} + 120.`,
-          `Add the values to get the final cost.`
+          `Hint 1 - Observation: Identify the two input variables, x and y, and their corresponding given counts for clay pots and wooden toys.`,
+          `Hint 2 - Strategy: Substitute the given values of x and y directly into the variables in the cost function formula.`,
+          `Hint 3 - Gentle Nudge: Multiply the pot count by its cost coefficient, multiply the toy count by its cost coefficient, then add these products to the fixed cost.`
         ]
       };
     },
@@ -1520,12 +1520,12 @@ const gstScenarios = [
       return {
         scenarioId: 'gst-transfer-001',
         context: 'shopping',
-        prompt: `A merchant sells a jacket for ₹${price} before taxes. If the GST rate is ${rate}%, what is the GST amount charged on this sale in rupees?`,
+        prompt: `A merchant sells a schoolbag for ₹${price} before taxes. If the government GST rate is ${rate}%, what is the tax amount charged on this sale in rupees?`,
         variables: vars,
         hints: [
-          `The GST amount is calculated as a percentage of the base price.`,
-          `Multiply the base price ₹${price} by the tax rate ${rate}%, and divide by 100.`,
-          `Formula: GST Amount = Price × (Rate / 100).`
+          `Hint 1 - Observation: Identify the pre-tax price of the schoolbag and the percentage rate of the sales tax.`,
+          `Hint 2 - Strategy: The sales tax is a percentage of the original price. What operation helps you calculate a percentage of a total amount?`,
+          `Hint 3 - Gentle Nudge: Express the tax percentage as a fraction out of 100, then multiply this fraction by the base price.`
         ]
       };
     },
@@ -1552,12 +1552,12 @@ const indicesScenarios = [
       return {
         scenarioId: 'ind-transfer-001',
         context: 'cooking',
-        prompt: `A yogurt culture contains an initial bacterial count of ${initial}. If the population doubles every hour (increases by a factor of 2^t after t hours), what is the total bacterial count after ${hours} hours?`,
+        prompt: `A biology experiment starts with a yeast cell count of ${initial}. If the cell population doubles every hour, what will be the total yeast cell count after ${hours} hours?`,
         variables: vars,
         hints: [
-          `The population after t hours is: Initial × 2^t.`,
-          `Calculate 2 raised to the power of ${hours} first (2^${hours} = ${Math.pow(2, hours)}).`,
-          `Multiply that value by the initial count of ${initial}.`
+          `Hint 1 - Observation: What is the starting quantity of yeast cells, and what does doubling every hour mean for the growth factor?`,
+          `Hint 2 - Strategy: The population grows exponentially. You need to multiply the starting count by 2 raised to the power of the number of hours.`,
+          `Hint 3 - Gentle Nudge: First find the doubling multiplier by raising 2 to the power of the elapsed hours, then scale the starting count.`
         ]
       };
     },
@@ -1585,11 +1585,12 @@ const multiplyScenarios = [
       return {
         scenarioId: 'mul-transfer-001',
         context: 'travel',
-        prompt: `An express train compartment has ${rows} rows of seats, with exactly ${seats} seats in each row. What is the total seating capacity of the compartment?`,
+        prompt: `A school assembly hall has ${rows} rows of chairs, with exactly ${seats} chairs set up in each row. What is the total seating capacity of the hall?`,
         variables: vars,
         hints: [
-          `Multiply the number of rows by the number of seats per row.`,
-          `Calculation: ${rows} × ${seats}.`
+          `Hint 1 - Observation: Think of the seats arranged in a grid or array. How many rows and how many items are in each row?`,
+          `Hint 2 - Strategy: When you have equal groups, what mathematical operation helps you combine them to find the total sum?`,
+          `Hint 3 - Gentle Nudge: Multiply the row count by the seat count per row.`
         ]
       };
     },
@@ -1611,12 +1612,12 @@ const primefactorScenarios = [
       return {
         scenarioId: 'prime-transfer-001',
         context: 'cooking',
-        prompt: `A bakery divides a large sheet cake of area ${val} square inches into smaller square portions with prime-number dimensions. What is the product of prime factors for the number ${val}? (Submit as factors separated by multiplication signs, e.g. 2 * 3 * 5)`,
+        prompt: `A teacher wants to organize ${val} unit blocks into identical sets of prime numbers. What is the prime factorization of ${val}? (Submit your answer as prime factors in ascending order, separated by ' * ', e.g., 2 * 3 * 5)`,
         variables: vars,
         hints: [
-          `Find the prime factors of ${val} by dividing by the smallest primes.`,
-          `For example, if the number was 30, it is 2 × 3 × 5.`,
-          `Write the prime factors in ascending order separated by ' * '.`
+          `Hint 1 - Observation: You need to break the number down into a product of numbers that are prime (only divisible by 1 and themselves).`,
+          `Hint 2 - Strategy: Start dividing the number by the smallest prime number (2) as many times as possible, then move to the next prime numbers.`,
+          `Hint 3 - Gentle Nudge: Find the smallest prime number that divides the total value, divide it, and repeat the process with the quotient.`
         ]
       };
     },
@@ -1660,12 +1661,12 @@ const profitlossScenarios = [
       return {
         scenarioId: 'pl-transfer-001',
         context: 'shopping',
-        prompt: `A merchant buys a handbag for ₹${cp} and sells it to a customer for ₹${sp}. What is the merchant's profit percentage?`,
+        prompt: `A school store buys a box of pencil cases for ₹${cp} and sells it to students for ₹${sp}. What is the profit percentage earned by the school store?`,
         variables: vars,
         hints: [
-          `Find the absolute profit first: Selling Price - Cost Price = ₹${sp} - ₹${cp} = ₹${sp - cp}.`,
-          `Calculate the profit percentage based on the Cost Price: (Profit / Cost Price) × 100.`,
-          `Calculate: (${sp - cp} / ${cp}) × 100.`
+          `Hint 1 - Observation: Compare the purchase price (cost price) with the selling price. Did the store earn a profit?`,
+          `Hint 2 - Strategy: Find the difference between the selling price and cost price to get the absolute profit, then express it as a fraction of the cost price.`,
+          `Hint 3 - Gentle Nudge: Calculate the profit amount first, then find what percentage that profit amount is of the cost price.`
         ]
       };
     },
@@ -1693,12 +1694,12 @@ const pythagScenarios = [
       return {
         scenarioId: 'pythag-transfer-001',
         context: 'travel',
-        prompt: `A hiker travels ${base} km due East, then changes direction and walks ${height} km due North. What is the direct distance from the hiker's starting position to the destination in km?`,
+        prompt: `A runner starts at a park gate, runs ${base} km due East, then turns and runs ${height} km due North. What is the direct, straight-line distance back to the starting gate in km?`,
         variables: vars,
         hints: [
-          `East and North form a right-angled triangle.`,
-          `Use Pythagoras' Theorem: Hypotenuse² = Base² + Height².`,
-          `Calculate: √(${base}² + ${height}²) = √(${base * base} + ${height * height}).`
+          `Hint 1 - Observation: Sketching the East and North paths reveals a right-angled corner. What geometric shape is formed?`,
+          `Hint 2 - Strategy: Use the Pythagorean theorem to calculate the length of the straight-line shortcut (the hypotenuse).`,
+          `Hint 3 - Gentle Nudge: Find the sum of the squares of the two walking distances, then find the square root of that sum.`
         ]
       };
     },
@@ -1726,12 +1727,12 @@ const remfactorScenarios = [
       return {
         scenarioId: 'rem-transfer-001',
         context: 'sports',
-        prompt: `A tournament splits teams according to the polynomial P(x) = x³ - 4x² + 5x - 2. If the players are divided into groups of (x - ${k}), what is the remainder of this polynomial division?`,
+        prompt: `A school field day distributes participants using the polynomial function P(x) = x³ - 4x² + 5x - 2. If the total number of divisions is grouped in blocks of (x - ${k}), what is the remainder of this polynomial division?`,
         variables: vars,
         hints: [
-          `By the Remainder Theorem, the remainder of dividing P(x) by (x - k) is simply P(k).`,
-          `Substitute x = ${k} into the polynomial equation.`,
-          `Calculate: ${k}³ - 4(${k}²) + 5(${k}) - 2.`
+          `Hint 1 - Observation: The divisor is of the linear form (x - k). What theorem relates divisor roots to polynomial remainders?`,
+          `Hint 2 - Strategy: According to the Remainder Theorem, dividing P(x) by (x - k) yields a remainder equal to evaluating the polynomial at x = k.`,
+          `Hint 3 - Gentle Nudge: Substitute the value of ${k} into the polynomial expression for x and compute the result.`
         ]
       };
     },
@@ -1761,12 +1762,12 @@ const roundingScenarios = [
       return {
         scenarioId: 'round-transfer-001',
         context: 'shopping',
-        prompt: `An item is priced at ₹${price}. If a buyer rounds this price to the nearest whole rupee, what estimated amount will they pay?`,
+        prompt: `A textbook at a school book fair is priced at ₹${price}. If a student rounds this price to the nearest whole rupee, what is the estimated cost?`,
         variables: vars,
         hints: [
-          `Look at the decimal part (paisa). If it is .50 or higher, round up to the next rupee.`,
-          `If the decimal part is less than .50, round down by removing the decimals.`,
-          `For ₹${price}, evaluate the decimal part.`
+          `Hint 1 - Observation: Examine the decimal digits after the decimal point in the price.`,
+          `Hint 2 - Strategy: When rounding to the nearest whole unit, check if the decimal value is halfway (0.50) or more. If so, round up; otherwise, round down.`,
+          `Hint 3 - Gentle Nudge: Check the decimal value of the price to see if it is 50 paise or more.`
         ]
       };
     },
@@ -1790,12 +1791,12 @@ const sectionScenarios = [
       return {
         scenarioId: 'sec-transfer-001',
         context: 'travel',
-        prompt: `A highway has two toll gates at coordinates (${x1}, ${y1}) and (${x2}, ${y2}). A patrol booth divides the segment between them in a 1:1 ratio. What are the coordinates of the patrol booth? (Submit as x, y)`,
+        prompt: `A long straight railway track connects Gate A at coordinates (${x1}, ${y1}) and Gate B at (${x2}, ${y2}). A signal tower divides the line segment between them in a 1:1 ratio. What are the coordinates of the signal tower? (Submit as x, y)`,
         variables: vars,
         hints: [
-          `A 1:1 division represents the midpoint.`,
-          `Calculate the average of coordinates: ((x1 + x2)/2, (y1 + y2)/2).`,
-          `Toll midpoint is ((${x1} + ${x2})/2, (${y1} + ${y2})/2).`
+          `Hint 1 - Observation: Observe that the signal tower divides the segment in a 1:1 ratio. What does this tell you about its position?`,
+          `Hint 2 - Strategy: A 1:1 division means the tower is located exactly at the midpoint of the line. Use the midpoint formula for the coordinates.`,
+          `Hint 3 - Gentle Nudge: Find the average of the two x-coordinates and the average of the two y-coordinates.`
         ]
       };
     },
@@ -1819,12 +1820,12 @@ const sequencesScenarios = [
       return {
         scenarioId: 'seq-transfer-001',
         context: 'pocketmoney',
-        prompt: `Ananya decides to save money weekly. She saves ₹${a} in the first week, and increases her savings by ₹${d} every subsequent week. How much money does she save in week ${n}?`,
+        prompt: `Ananya decides to save money to buy a microscope. She puts ₹${a} in her piggy bank in the first week, and increases her weekly savings by ₹${d} each week after that. How much money does she add to her piggy bank in week ${n}?`,
         variables: vars,
         hints: [
-          `This savings progression forms an Arithmetic Progression (AP) with first term a = ${a} and common difference d = ${d}.`,
-          `The formula for the N-th term is: T_n = a + (n - 1) × d.`,
-          `Calculate: ${a} + (${n} - 1) × ${d}.`
+          `Hint 1 - Observation: Check how much Ananya saves in the first week, and note the fixed amount by which her savings increase each week.`,
+          `Hint 2 - Strategy: This increasing pattern is an Arithmetic Progression. What formula allows you to find the value of any specific week's savings directly?`,
+          `Hint 3 - Gentle Nudge: Multiply the weekly increase by one less than the week number, then add this to the first week's savings.`
         ]
       };
     },
@@ -1852,12 +1853,12 @@ const sharesScenarios = [
       return {
         scenarioId: 'shares-transfer-001',
         context: 'shopping',
-        prompt: `An investor owns ${n} shares of a company. Each share has a nominal face value of ₹${nv}. If the company declares a dividend of ${divRate}%, what is the total dividend amount received in rupees?`,
+        prompt: `An investor holds ${n} shares of stock in a sustainable energy company. Each share has a registered face value of ₹${nv}. If the company announces a dividend payout of ${divRate}%, what is the total dividend payout received in rupees?`,
         variables: vars,
         hints: [
-          `First find the total face value of the shares: Number of Shares × Face Value = ${n} × ₹${nv}.`,
-          `The dividend amount is calculated as a percentage of this total face value.`,
-          `Calculate: (Total Face Value) × (Dividend Rate / 100) = (₹${n * nv}) × (${divRate} / 100).`
+          `Hint 1 - Observation: Identify the number of shares owned, the nominal face value of a single share, and the declared percentage payout.`,
+          `Hint 2 - Strategy: Find the total face value of all the shares first by multiplying the number of shares by their face value, then apply the dividend percentage to this total.`,
+          `Hint 3 - Gentle Nudge: Multiply the total nominal value of the shares by the dividend rate fraction.`
         ]
       };
     },
@@ -1887,12 +1888,12 @@ const setsScenarios = [
       return {
         scenarioId: 'sets-transfer-001',
         context: 'sports',
-        prompt: `In a survey of ${total} students, ${c} play cricket, ${f} play football, and ${both} play both sports. How many students do not play either sport?`,
+        prompt: `In a class of ${total} students, ${c} participate in the science club, ${f} join the art club, and ${both} are in both clubs. How many students are not in either club?`,
         variables: vars,
         hints: [
-          `Find the total students who play at least one sport using set union formula: n(C ∪ F) = n(C) + n(F) - n(C ∩ F).`,
-          `Active students: ${c} + ${f} - ${both} = ${c + f - both}.`,
-          `Subtract this number from the total surveyed students (${total}) to find those who do not play either.`
+          `Hint 1 - Observation: How many total students are in the class? Notice that some students are counted twice because they are in both clubs.`,
+          `Hint 2 - Strategy: Use the set union concept to find the number of unique students who are in at least one club, then subtract this from the class total.`,
+          `Hint 3 - Gentle Nudge: Find the number of students who are in either club by adding the two club totals and subtracting the double-counted students who are in both.`
         ]
       };
     },
@@ -1920,12 +1921,12 @@ const similarityScenarios = [
       return {
         scenarioId: 'sim-transfer-001',
         context: 'shopping',
-        prompt: `A prototype model of a storage box is similar to the production box. If the production box has side lengths exactly ${ratio} times larger than the prototype, and the prototype volume is ${v1} cm³, what is the volume of the production box in cm³?`,
+        prompt: `A scale model of a classroom storage bin is geometrically similar to the actual bin. If the actual bin has length, width, and height dimensions exactly ${ratio} times larger than the model, and the model has a volume of ${v1} cm³, what is the volume of the actual bin in cm³?`,
         variables: vars,
         hints: [
-          `For similar shapes, the volume ratio is the cube of the linear scale factor: Volume Ratio = (Scale Factor)³.`,
-          `The volume scale factor is ${ratio}³ = 8.`,
-          `Multiply the prototype volume (${v1} cm³) by 8.`
+          `Hint 1 - Observation: Check the linear scale multiplier. When side dimensions scale up, how does the three-dimensional volume scale?`,
+          `Hint 2 - Strategy: Volume scales proportionally to the cube of the linear scale factor. Find the volume scaling factor by cubing the linear factor.`,
+          `Hint 3 - Gentle Nudge: Raise the linear dimension multiplier to the third power to find the volume multiplier, then scale up the model's volume.`
         ]
       };
     },
@@ -1952,12 +1953,12 @@ const squaringScenarios = [
       return {
         scenarioId: 'sq-transfer-001',
         context: 'cooking',
-        prompt: `A square pizza box has side lengths of ${side} cm. What is the total area of the box base in cm²?`,
+        prompt: `A square sandbox in a children's park has side lengths of ${side} cm. What is the total area of the sandbox base in cm²?`,
         variables: vars,
         hints: [
-          `The area is side squared: ${side}².`,
-          `You can calculate this easily using: (100 - 5)² = 10000 - 1000 + 25 = 9025 (or (100 + 5)² = 10000 + 1000 + 25 = 11025).`,
-          `Multiply the side length by itself.`
+          `Hint 1 - Observation: Identify the shape of the sandbox and the length of one of its sides.`,
+          `Hint 2 - Strategy: What mathematical formula gives the area of a square using the length of a side?`,
+          `Hint 3 - Gentle Nudge: Multiply the side length by itself.`
         ]
       };
     },
@@ -1978,12 +1979,12 @@ const simulScenarios = [
       return {
         scenarioId: 'simul-transfer-001',
         context: 'shopping',
-        prompt: `At a theater, 2 adult tickets and 3 child tickets cost a total of ₹700. If 1 adult ticket and 1 child ticket cost ₹270, what is the cost of a single adult ticket in rupees?`,
+        prompt: `At a school fair, 2 adult tickets and 3 student tickets cost a total of ₹700. If 1 adult ticket and 1 student ticket cost ₹270, what is the cost of a single adult ticket in rupees?`,
         variables: vars,
         hints: [
-          `Let adult ticket price be A and child ticket price be C.`,
-          `Form system of equations: (1) 2A + 3C = 700, (2) A + C = 270.`,
-          `Multiply equation (2) by 3: 3A + 3C = 810. Subtract equation (1) from this to isolate A.`
+          `Hint 1 - Observation: Write down variables to represent the cost of an adult ticket and a student ticket. Identify the two purchase scenarios.`,
+          `Hint 2 - Strategy: Form a system of two linear equations with two variables. Use elimination or substitution to isolate the adult ticket cost.`,
+          `Hint 3 - Gentle Nudge: Try multiplying the second equation by 3 to match the number of student tickets, then subtract the first equation to eliminate the student ticket variable.`
         ]
       };
     },
@@ -2004,12 +2005,12 @@ const stdformScenarios = [
       return {
         scenarioId: 'std-transfer-001',
         context: 'travel',
-        prompt: `A star is located 3.0 × 10^13 kilometers from Earth. If a spacecraft travels at 1.5 × 10^4 kilometers per hour, how many hours will it take to reach the star? (Write answer in standard scientific format: e.g. 2e9 or 2.0e9)`,
+        prompt: `A distant star is located 3.0 × 10^13 kilometers from Earth. If a science probe travels at a speed of 1.5 × 10^4 kilometers per hour, how many hours will it take to reach the star? (Submit in format: e.g. 2e9)`,
         variables: vars,
         hints: [
-          `Time is Distance divided by Speed.`,
-          `Calculate: (3.0 × 10^13) / (1.5 × 10^4).`,
-          `Subtract indices: 10^(13-4) = 10^9. Divide base numbers: 3.0 / 1.5 = 2. Answer format: 2e9.`
+          `Hint 1 - Observation: Identify the distance and speed given in scientific notation. Which division relates distance and speed to find the duration?`,
+          `Hint 2 - Strategy: To divide numbers in scientific notation, divide the coefficients and subtract the exponent of the divisor from the exponent of the dividend.`,
+          `Hint 3 - Gentle Nudge: Divide the first decimal number by the second decimal number, then subtract the exponent of 10 in the speed from the exponent of 10 in the distance.`
         ]
       };
     },
@@ -2031,12 +2032,12 @@ const statsScenarios = [
       return {
         scenarioId: 'stat-transfer-001',
         context: 'sports',
-        prompt: `A batsman scores ${s1}, ${s2}, and ${s3} runs in three consecutive innings. What is his mean batting score?`,
+        prompt: `A student scores ${s1}, ${s2}, and ${s3} points on three weekly spelling quizzes. What is their mean quiz score?`,
         variables: vars,
         hints: [
-          `The mean is the sum of all scores divided by the number of innings.`,
-          `Sum: ${s1} + ${s2} + ${s3} = ${s1 + s2 + s3}.`,
-          `Divide the sum by 3.`
+          `Hint 1 - Observation: Identify the quiz scores from the three weeks. How many scores are there in total?`,
+          `Hint 2 - Strategy: The mean is the average value. Add all the individual scores together, then divide by the total number of quizzes.`,
+          `Hint 3 - Gentle Nudge: Start by calculating the sum of the three quiz scores first.`
         ]
       };
     },
@@ -2057,12 +2058,12 @@ const surdsScenarios = [
       return {
         scenarioId: 'surd-transfer-001',
         context: 'travel',
-        prompt: `A square walking park has a diagonal length modeled by the expression √18 + √8 meters. What is this distance in fully simplified surd form? (Submit as a√b e.g. 5√2)`,
+        prompt: `A design for a square flowerbed has a diagonal length modeled by the expression √18 + √8 meters. What is this length in fully simplified surd form? (Submit as a√b)`,
         variables: vars,
         hints: [
-          `Simplify each surd first: √18 = √(9×2) = 3√2.`,
-          `Simplify second surd: √8 = √(4×2) = 2√2.`,
-          `Add the simplified terms: 3√2 + 2√2 = 5√2.`
+          `Hint 1 - Observation: Note that you cannot add surds directly unless they have the same number under the square root symbol.`,
+          `Hint 2 - Strategy: Simplify both square root terms by factoring out perfect squares, then add the resulting coefficients.`,
+          `Hint 3 - Gentle Nudge: Simplify the first root by writing it as a multiple of √2, then do the same for the second root.`
         ]
       };
     },
@@ -2085,12 +2086,12 @@ const transformScenarios = [
       return {
         scenarioId: 'trans-transfer-001',
         context: 'shopping',
-        prompt: `A shape logo at coordinate (${x}, ${y}) is translated by the vector [${dx}, ${dy}]. What are the coordinates of the new logo vertex? (Submit as x, y)`,
+        prompt: `A graphic design element at coordinate (${x}, ${y}) on a screen is shifted by the translation vector [${dx}, ${dy}]. What are the coordinates of the new vertex? (Submit as x, y)`,
         variables: vars,
         hints: [
-          `Translation shifts coordinates by adding the vector values.`,
-          `New X: ${x} + ${dx}.`,
-          `New Y: ${y} + ${dy}.`
+          `Hint 1 - Observation: What are the initial coordinates of the design element, and what are the horizontal and vertical shifts of the translation vector?`,
+          `Hint 2 - Strategy: A translation shifts the points on a plane. Add the horizontal vector value to the x-coordinate, and add the vertical vector value to the y-coordinate.`,
+          `Hint 3 - Gentle Nudge: Add the first number of the vector to the initial x-value, and the second number of the vector to the initial y-value.`
         ]
       };
     },
@@ -2112,12 +2113,12 @@ const trianglesScenarios = [
       return {
         scenarioId: 'tri-transfer-001',
         context: 'cooking',
-        prompt: `A triangular napkin has two angles measuring ${a1}° and ${a2}°. What is the measurement of the third angle in degrees?`,
+        prompt: `A triangular sail on a model boat has two angles measuring ${a1}° and ${a2}°. What is the measure of the third angle in degrees?`,
         variables: vars,
         hints: [
-          `The sum of angles in a triangle is always 180 degrees.`,
-          `Add the two known angles: ${a1} + ${a2} = ${a1 + a2}°.`,
-          `Subtract that sum from 180°.`
+          `Hint 1 - Observation: Identify the measures of the two given angles of the triangular sail.`,
+          `Hint 2 - Strategy: The sum of all three internal angles of any triangle is a constant value. Add the two known angles, and find what is needed to reach that total.`,
+          `Hint 3 - Gentle Nudge: Subtract the combined total of the two given angles from 180 degrees.`
         ]
       };
     },
@@ -2139,12 +2140,12 @@ const trigScenarios = [
       return {
         scenarioId: 'trig-transfer-001',
         context: 'travel',
-        prompt: `A lighthouse is ${opp} meters high. If a ship is ${adj} meters away from the base, what is the angle of elevation of the top of the lighthouse in degrees from the ship?`,
+        prompt: `A model rocket launcher tower is ${opp} meters tall. If a student stands ${adj} meters away from the base of the tower, what is the angle of elevation of the top of the tower in degrees from the student's position?`,
         variables: vars,
         hints: [
-          `The angle of elevation θ satisfies: tan(θ) = Opposite / Adjacent.`,
-          `Opposite is the height (${opp}) and Adjacent is the distance (${adj}).`,
-          `tan(θ) = ${opp} / ${adj} = 1. What angle has a tangent of 1?`
+          `Hint 1 - Observation: Identify the height of the tower (opposite side) and the distance from the tower (adjacent side) in the right-angled triangle.`,
+          `Hint 2 - Strategy: Use the tangent trigonometric function, which is the ratio of the opposite side to the adjacent side, to solve for the angle.`,
+          `Hint 3 - Gentle Nudge: Find the ratio of the opposite height to the adjacent distance, and then find the angle whose tangent is equal to this ratio.`
         ]
       };
     },
@@ -2167,12 +2168,12 @@ const variationScenarios = [
       return {
         scenarioId: 'var-transfer-001',
         context: 'sports',
-        prompt: `The extension of a training elastic band varies directly with the force applied. If a force of ${force1} N stretches it by ${ext1} cm, how many cm will a force of ${force2} N stretch it?`,
+        prompt: `The stretch distance of a gym spring band varies directly with the pulling force applied to it. If a force of ${force1} N stretches the band by ${ext1} cm, how many cm will a pulling force of ${force2} N stretch it?`,
         variables: vars,
         hints: [
-          `Direct variation means: Extension = k × Force.`,
-          `Find variation constant k: ${ext1} / ${force1} = ${ext1 / force1}.`,
-          `Multiply k by the new force of ${force2} N.`
+          `Hint 1 - Observation: Identify the initial force and its corresponding stretch distance, as well as the new target force.`,
+          `Hint 2 - Strategy: Since this is a direct variation relationship, the ratio of stretch to force remains constant. Calculate the constant of variation (ratio) first.`,
+          `Hint 3 - Gentle Nudge: Find the stretch distance per 1 Newton of force, then multiply this constant rate by the new force value.`
         ]
       };
     },
@@ -2194,12 +2195,12 @@ const vectorsScenarios = [
       return {
         scenarioId: 'vec-transfer-001',
         context: 'travel',
-        prompt: `A hiker starts walking and has a first displacement vector A = [${x1}, ${y1}]. They then walk another displacement B = [${x2}, ${y2}]. What is their total combined displacement coordinates? (Submit as x, y)`,
+        prompt: `A hiker walks on a trail and completes a first displacement vector A = [${x1}, ${y1}] relative to a basecamp. They then walk a second displacement vector B = [${x2}, ${y2}]. What are the coordinates of their final position relative to the basecamp? (Submit as x, y)`,
         variables: vars,
         hints: [
-          `To add displacement vectors, add their corresponding X and Y coordinates.`,
-          `X total: ${x1} + ${x2}.`,
-          `Y total: ${y1} + ${y2}.`
+          `Hint 1 - Observation: Identify the horizontal (x) and vertical (y) shift components for both parts of the journey.`,
+          `Hint 2 - Strategy: To find the final position, add the two independent displacement vectors. Combine the x-coordinates together and the y-coordinates together.`,
+          `Hint 3 - Gentle Nudge: Add the first coordinate of vector A to the first coordinate of vector B, then do the same for the second coordinates.`
         ]
       };
     },
@@ -2220,12 +2221,12 @@ const vocabScenarios = [
       return {
         scenarioId: 'voc-transfer-001',
         context: 'travel',
-        prompt: `In urban planning, the geometric center of a city's region is referred to as which term? (Enter Centroid, Circumcenter, or Incenter)`,
+        prompt: `In mapmaking, the balance point or geometric center of a triangular reserve is referred to as which term? (Enter Centroid, Circumcenter, or Incenter)`,
         variables: vars,
         hints: [
-          `The average position of all points in a shape is the centroid.`,
-          `Centroid represents the physical center of gravity.`,
-          `Type 'Centroid'.`
+          `Hint 1 - Observation: Think of the point where the three medians of a triangle intersect.`,
+          `Hint 2 - Strategy: The term represents the average position of all points in the geometric figure, often called the center of mass.`,
+          `Hint 3 - Gentle Nudge: It starts with the prefix 'Cent-' and refers to the balance point of a triangular shape.`
         ]
       };
     },
@@ -2246,12 +2247,12 @@ const guessScenarios = [
       return {
         scenarioId: 'guess-transfer-001',
         context: 'pocketmoney',
-        prompt: `In a guessing game of numbers between 1 and 100, what is the maximum number of guesses needed to guarantee finding the correct number using binary search?`,
+        prompt: `In a card sorting game with 100 cards numbered in order, what is the maximum number of card checks needed to guarantee finding a specific card using binary search?`,
         variables: vars,
         hints: [
-          `Binary search halves the search space each time.`,
-          `We need to find smallest n such that 2^n >= 100.`,
-          `Since 2^6 = 64 and 2^7 = 128, the answer is 7.`
+          `Hint 1 - Observation: Recall how binary search divides the search space. How much of the remaining cards are eliminated at each step?`,
+          `Hint 2 - Strategy: Each search step halves the number of remaining options. You need to find the smallest exponent n such that 2 raised to the power of n is greater than or equal to the total card count.`,
+          `Hint 3 - Gentle Nudge: Think of finding the smallest power of 2 that is at least 100.`
         ]
       };
     },
