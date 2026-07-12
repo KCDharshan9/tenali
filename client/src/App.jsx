@@ -19,10 +19,23 @@
  *
  * Theme persistence: Dark/light mode preference stored in localStorage[tenali-theme]
  * Progress persistence: Adaptive tables app saves current table progress in localStorage
+ *
+ * ─── Shared Device Learning Profiles ("Who's Studying?") ───────────────────
+ * Profile picker gate lives at the App root: on every page load the user
+ * must tap a profile (or create one) before any quiz is rendered. Each
+ * profile owns its own adaptScore per topic, persisted to localStorage
+ * under `tenali-profiles-<scope>`. See `lib/profileStore.js`,
+ * `hooks/useProfiles.jsx`, `hooks/useAdaptiveScore.js`,
+ * `components/ProfilePicker.jsx`, `components/ProfileSwitcher.jsx`.
  */
 
 import { useEffect, useState, useRef, useMemo } from 'react'
 import './App.css'
+import { ProfilesProvider, useProfiles } from './hooks/useProfiles.jsx'
+import { useAdaptiveScore } from './hooks/useAdaptiveScore.js'
+import ProfilePicker from './components/ProfilePicker.jsx'
+import ProfileSwitcher from './components/ProfileSwitcher.jsx'
+import ProfileAvatar from './components/ProfileAvatar.jsx'
 
 // API base URL from environment variables (Vite)
 const API = import.meta.env.VITE_API_BASE_URL || '';
@@ -83,18 +96,22 @@ function useAuth() {
 }
 
 // Hamburger button (top-right) + dropdown + login modal.
-// Renders globally — sits next to the .theme-toggle.
+// Renders globally — sits next to the .theme-toggle. Mounted from
+// main.jsx as a sibling of <App />, inside the same <ProfilesProvider>,
+// so useProfiles() is always in scope here.
 function AuthMenu() {
   const { user, login, logout } = useAuth()
+  const { activeProfile } = useProfiles()
   const [open, setOpen] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
+  const [showSwitcher, setShowSwitcher] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    const onKey = e => { if (e.key === 'Escape') { setOpen(false); setShowLogin(false); setError('') } }
+    const onKey = e => { if (e.key === 'Escape') { setOpen(false); setShowLogin(false); setShowSwitcher(false); setError('') } }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -142,12 +159,29 @@ function AuthMenu() {
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'transparent' }} />
           <div style={{
             position: 'fixed', top: 64, right: 16, zIndex: 102,
-            minWidth: 200, padding: 6,
+            minWidth: 220, padding: 6,
             background: 'var(--clr-surface, #1c1c1f)',
             border: '1px solid var(--clr-border, #444)',
             borderRadius: 10, boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
             color: 'var(--clr-text)',
           }}>
+            {activeProfile && (
+              <>
+                <div style={{ padding: '8px 12px', fontSize: '0.85rem', opacity: 0.75, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ProfileAvatar profile={activeProfile} size={24} />
+                  <span>Studying as <strong>{activeProfile.name}</strong></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setShowSwitcher(true); setOpen(false) }}
+                  style={{ width: '100%', textAlign: 'left', padding: '8px 12px', borderRadius: 6, background: 'transparent', border: 'none', color: 'var(--clr-text)', cursor: 'pointer', fontSize: '0.95rem' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  Switch profile
+                </button>
+              </>
+            )}
             {user ? (
               <>
                 <div style={{ padding: '8px 12px', fontSize: '0.85rem', opacity: 0.75 }}>
@@ -230,6 +264,10 @@ function AuthMenu() {
             </div>
           </form>
         </div>
+      )}
+
+      {showSwitcher && (
+        <ProfileSwitcher onClose={() => setShowSwitcher(false)} />
       )}
     </>
   )
@@ -36052,6 +36090,42 @@ function App() {
   // Get the component to render (or null if mode not set)
   const ActiveApp = mode ? modeMap[mode] : null
 
+  // The picker gate lives inside AppGate, which is rendered as a child of
+  // <ProfilesProvider> from main.jsx (so useProfiles() is in scope for both
+  // AppGate and the externally-rendered <AuthMenu />). The provider wraps
+  // the entire app root in main.jsx so the same profiles context is shared
+  // by the home shell and the hamburger menu, regardless of whether the
+  // user is on the home flow or a pathname route.
+  return (
+    <AppGate
+      mode={mode}
+      setMode={setMode}
+      theme={theme}
+      toggleTheme={toggleTheme}
+      ActiveApp={ActiveApp}
+    />
+  )
+}
+
+/**
+ * AppGate — owns the picker gate. Renders the full-screen "Who's Studying?"
+ * screen when no profile is active, otherwise renders the normal app
+ * shell. Must be a child of <ProfilesProvider> (mounted in main.jsx).
+ */
+function AppGate({ mode, setMode, theme, toggleTheme, ActiveApp }) {
+  const { ready, activeProfileId } = useProfiles()
+
+  // Wait one render after mount so storage has been read before deciding.
+  if (!ready) return null
+
+  if (!activeProfileId) {
+    return (
+      <div className="app-shell app-shell--gate">
+        <ProfilePicker />
+      </div>
+    )
+  }
+
   return (
     <div className="app-shell">
       <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
@@ -36061,7 +36135,7 @@ function App() {
         {!mode ? (
           <Home onSelect={setMode} />
         ) : ActiveApp ? (
-          <ActiveApp onBack={() => setMode(null)} />
+          <ActiveApp key={`${activeProfileId}-${mode}`} onBack={() => setMode(null)} />
         ) : (
           <Home onSelect={setMode} />
         )}
@@ -49573,5 +49647,9 @@ function QuizLayout({ title, subtitle, onBack, children, timer }) {
 // Export main App component (entry point)
 export default App
 
-// Named export so main.jsx can render the global hamburger menu next to <App />
-export { AuthMenu }
+// Named exports so main.jsx can mount <AuthMenu /> alongside <App /> AND
+// read the auth user (for <ProfilesProvider authUser={...} />). Mixing
+// component + hook exports trips Fast Refresh's `only-export-components`
+// rule, which is acceptable here since main.jsx is the only consumer.
+// eslint-disable-next-line react-refresh/only-export-components
+export { AuthMenu, useAuth }
