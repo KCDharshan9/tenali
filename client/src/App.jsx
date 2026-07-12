@@ -36112,17 +36112,29 @@ function App() {
  * screen when no profile is active, otherwise renders the normal app
  * shell. Must be a child of <ProfilesProvider> (mounted in main.jsx).
  *
- * Also tracks profile-switch transitions: when activeProfileId changes,
- * fires a brief full-screen glow overlay (220ms accent pulse) to make
- * the switch feel intentional. First mount is ignored (no transition on
- * initial load).
+ * Behavior:
+ *   - 0 profiles → welcome screen inside picker.
+ *   - 1 profile  → silently auto-pick that profile (remember-me for solo
+ *                  users). Picker does not appear.
+ *   - >1 profiles → full-screen "Who's Studying?" picker.
+ *   - activeProfileId set → home shell.
+ *
+ * The auto-pick for single-profile devices is the "remember me" feature:
+ * solo learners skip the picker on every refresh, but switching to add a
+ * sibling is one extra click via the menu (Switch profile → Add new).
+ *
+ * Also tracks profile-switch transitions: when activeProfileId changes
+ * mid-session, fires a brief full-screen glow overlay.
  */
 function AppGate({ mode, setMode, theme, toggleTheme, ActiveApp }) {
-  const { ready, activeProfileId } = useProfiles()
+  const { ready, profiles, activeProfileId, switchProfile } = useProfiles()
   const prevProfileIdRef = useRef(activeProfileId)
   const [pulseKey, setPulseKey] = useState(0)
 
-  // Detect actual profile changes (not first mount).
+  // Detect actual mid-session profile changes and fire the glow pulse.
+  // First mount / auto-pick does NOT trigger glow (prevProfileIdRef.current
+  // starts null and the first assignment is from null → id, which we
+  // intentionally don't pulse).
   useEffect(() => {
     if (!ready) return
     if (prevProfileIdRef.current && prevProfileIdRef.current !== activeProfileId) {
@@ -36131,8 +36143,16 @@ function AppGate({ mode, setMode, theme, toggleTheme, ActiveApp }) {
     prevProfileIdRef.current = activeProfileId
   }, [ready, activeProfileId])
 
-  // Wait one render after mount so storage has been read before deciding.
   if (!ready) return null
+
+  // Remember-me: 1 profile on a device = silently auto-pick. setState
+  // during render is the React-recommended pattern for derived state;
+  // the next render sees activeProfileId set and renders the home shell.
+  // The user never sees the picker for a single-profile device.
+  if (!activeProfileId && profiles.length === 1) {
+    switchProfile(profiles[0].id)
+    return null
+  }
 
   if (!activeProfileId) {
     return (

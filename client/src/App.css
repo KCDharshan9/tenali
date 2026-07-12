@@ -2642,6 +2642,13 @@ button:disabled {
   font-size: 2.4rem;
   box-shadow: none;
 }
+/* Picker-grid "Add new" card avatar: same 96×96 size as the real profile
+ * avatars so the Add card aligns to the same height. */
+.profile-avatar--placeholder.profile-avatar--lg {
+  width: 96px;
+  height: 96px;
+  font-size: 2.8rem;
+}
 .profile-avatar--pick {
   width: 44px;
   height: 44px;

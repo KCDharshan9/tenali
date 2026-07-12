@@ -10,7 +10,7 @@
  * Distinct from ProfilePicker because:
  *   - ProfilePicker is a full-screen gate; ProfileSwitcher is a modal.
  *   - ProfileSwitcher is shown while another route is already mounted;
- *     ProfilePicker has its own delete+create modal but uses a tighter
+ *     ProfilePicker has its own create + rename modal but uses a tighter
  *     grid layout.
  */
 

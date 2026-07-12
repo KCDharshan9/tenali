@@ -3,9 +3,12 @@
  *
  * Wraps the entire app inside <ProfilesProvider>. The hook:
  *   - reads the storage scope from useAuth().user?.username || 'default'
+ *   - loads the profiles list from localStorage (per-profile data like
+ *     adaptScore IS persisted; the active profile pointer is NOT)
+ *   - tracks the active profile id IN REACT STATE ONLY — page refresh /
+ *     tab close wipes it, picker re-opens
  *   - listens to PROFILE_CHANGE_EVENT + 'storage' for cross-component sync
- *   - exposes active profile, profiles list, create / switch / delete
- *   - clears in-memory state on logout / scope change
+ *   - clears in-memory activeProfileId on scope change (login/logout)
  *
  * useProfiles() MUST be rendered inside <ProfilesProvider>. It throws a
  * helpful error if called outside, since misuse is a programming bug.
@@ -29,18 +32,18 @@ export function ProfilesProvider({ authUser, children }) {
   const scope = authUser?.username || 'default'
 
   // Track scope changes during render. When scope changes (login/logout),
-  // re-read storage synchronously rather than in an effect. This is the
-  // React-recommended "store the previous prop" pattern.
+  // re-read storage synchronously and clear the in-memory active profile.
+  // This is the React-recommended "store the previous prop" pattern.
   const prevScopeRef = useRef(scope)
   const [record, setRecord] = useState(() => store.loadProfiles(scope))
+  const [activeProfileId, setActiveProfileId] = useState(null)
   if (prevScopeRef.current !== scope) {
     prevScopeRef.current = scope
     setRecord(store.loadProfiles(scope))
+    setActiveProfileId(null)
   }
 
-  // Listen for in-process and cross-tab changes. The deps track `scope`
-  // so the listener re-binds to the current storage scope; this avoids
-  // mutating refs during render.
+  // Listen for in-process and cross-tab profile-list changes.
   useEffect(() => {
     const refresh = () => setRecord(store.loadProfiles(scope))
     window.addEventListener(store.PROFILE_CHANGE_EVENT, refresh)
@@ -51,34 +54,40 @@ export function ProfilesProvider({ authUser, children }) {
     }
   }, [scope])
 
+  // Profiles sorted in creation order (createdAt asc): first profile created
+  // appears first in both the picker grid and the switcher modal.
   const profiles = useMemo(
     () => Object.values(record.profiles || {}).sort(
-      (a, b) => new Date(b.lastUsedAt) - new Date(a.lastUsedAt)
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
     ),
     [record]
   )
-  const activeProfile = record.activeProfileId
-    ? record.profiles[record.activeProfileId] || null
+  const activeProfile = activeProfileId
+    ? record.profiles[activeProfileId] || null
     : null
-  const activeProfileId = record.activeProfileId || null
 
   const createProfile = useCallback((name, avatarId) => {
     const result = store.createProfile(scope, name, avatarId)
-    if (result.ok) setRecord(store.loadProfiles(scope))
+    if (result.ok) {
+      setRecord(store.loadProfiles(scope))
+      return { ...result, profile: { ...result.profile, id: result.profile.id } }
+    }
     return result
   }, [scope])
 
+  // Update name/avatar for an existing profile. Used by the rename modal.
+  const updateProfile = useCallback((id, patch) => {
+    const result = store.updateProfile(scope, id, patch)
+    if (result) setRecord(store.loadProfiles(scope))
+    return result
+  }, [scope])
+
+  // In-memory only — no localStorage write. Page refresh wipes this.
   const switchProfile = useCallback((id) => {
-    const p = store.setActiveProfileId(scope, id)
-    if (p) setRecord(store.loadProfiles(scope))
-    return p
-  }, [scope])
-
-  const deleteProfile = useCallback((id) => {
-    const result = store.deleteProfile(scope, id)
-    if (result.ok) setRecord(store.loadProfiles(scope))
-    return result
-  }, [scope])
+    const next = id == null ? null : (record.profiles[id] || null)
+    setActiveProfileId(next ? id : null)
+    return next
+  }, [record])
 
   const value = useMemo(() => ({
     scope,
@@ -87,9 +96,9 @@ export function ProfilesProvider({ authUser, children }) {
     activeProfile,
     activeProfileId,
     createProfile,
+    updateProfile,
     switchProfile,
-    deleteProfile,
-  }), [scope, profiles, activeProfile, activeProfileId, createProfile, switchProfile, deleteProfile])
+  }), [scope, profiles, activeProfile, activeProfileId, createProfile, updateProfile, switchProfile])
 
   return <ProfilesContext.Provider value={value}>{children}</ProfilesContext.Provider>
 }

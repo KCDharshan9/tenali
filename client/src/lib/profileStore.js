@@ -43,10 +43,10 @@ function safeRead(scope) {
     const parsed = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object') return emptyRecord()
     if (!parsed.profiles || typeof parsed.profiles !== 'object') parsed.profiles = {}
-    if (typeof parsed.activeProfileId !== 'string') parsed.activeProfileId = null
-    if (parsed.activeProfileId && !parsed.profiles[parsed.activeProfileId]) {
-      parsed.activeProfileId = null
-    }
+    // activeProfileId is intentionally NOT persisted — the picker re-opens
+    // on every page load. The provider tracks the active selection in
+    // React state only (per session).
+    parsed.activeProfileId = null
     return parsed
   } catch (e) {
     console.warn('[profileStore] failed to read', scope, e)
@@ -74,13 +74,15 @@ export function loadProfiles(scope) {
   return safeRead(scope)
 }
 
-export function getActiveProfileId(scope) {
-  return safeRead(scope).activeProfileId
+// getActiveProfileId / getActiveProfile — deprecated. The active profile
+// is session-only and lives in React state via useProfiles(). These are
+// kept as no-ops so any stray caller does not crash during the migration.
+export function getActiveProfileId() {
+  return null
 }
 
-export function getActiveProfile(scope) {
-  const rec = safeRead(scope)
-  return rec.activeProfileId ? rec.profiles[rec.activeProfileId] || null : null
+export function getActiveProfile() {
+  return null
 }
 
 export function listProfiles(scope) {
@@ -93,6 +95,7 @@ export function listProfiles(scope) {
 /**
  * Create a new profile and return it (also persists to localStorage).
  * `name` is validated; returns { ok:false, error } on validation failure.
+ * Does NOT mark the new profile as active — that lives in React state.
  */
 export function createProfile(scope, name, avatarId) {
   const rec = safeRead(scope)
@@ -102,8 +105,6 @@ export function createProfile(scope, name, avatarId) {
 
   const profile = makeBlankProfile({ name, avatarId: avatarId || DEFAULT_AVATAR_ID })
   rec.profiles[profile.id] = profile
-  // New profile becomes active by default so the picker closes immediately.
-  rec.activeProfileId = profile.id
   if (safeWrite(scope, rec)) emit(scope)
   return { ok: true, profile }
 }
@@ -125,38 +126,19 @@ export function updateProfile(scope, id, patch) {
   return next
 }
 
-/**
- * Delete a profile. The last remaining profile cannot be deleted.
- * Returns { ok: true } or { ok: false, error }.
- */
-export function deleteProfile(scope, id) {
-  const rec = safeRead(scope)
-  const ids = Object.keys(rec.profiles)
-  if (ids.length <= 1) {
-    return { ok: false, error: 'Cannot delete the last profile.' }
-  }
-  if (!rec.profiles[id]) {
-    return { ok: false, error: 'Profile not found.' }
-  }
-  delete rec.profiles[id]
-  if (rec.activeProfileId === id) {
-    rec.activeProfileId = ids.filter(x => x !== id)[0] || null
-  }
-  if (safeWrite(scope, rec)) emit(scope)
-  return { ok: true }
-}
+// NOTE: Profile deletion was removed entirely. The picker has only
+// "rename" (long-press) — no delete surface — because mis-tap deletion
+// of a kid's progress is not worth the risk. If a future need arises
+// (e.g. reset device), it can be re-added as an explicit settings menu
+// with a confirm modal, not as a long-press gesture.
 
 /**
- * Switch the active profile. Marks lastUsedAt. Returns the new active
- * profile (or null if the id was not found).
+ * Reserved slot for a future API. The active profile is no longer
+ * persisted; this function is a no-op kept for backwards-compat.
+ * Use `useProfiles().switchProfile(id)` from React instead.
  */
-export function setActiveProfileId(scope, id) {
-  const rec = safeRead(scope)
-  if (!rec.profiles[id]) return null
-  rec.activeProfileId = id
-  rec.profiles[id].lastUsedAt = new Date().toISOString()
-  if (safeWrite(scope, rec)) emit(scope)
-  return rec.profiles[id]
+export function setActiveProfileId() {
+  return null
 }
 
 /**
