@@ -75,10 +75,11 @@ export function ProfilesProvider({ authUser, children }) {
     return result
   }, [scope])
 
-  // Update name/avatar for an existing profile. Used by the rename modal.
+  // Update name/avatar for an existing profile. Validates against
+  // duplicate names. Used by the rename modal.
   const updateProfile = useCallback((id, patch) => {
     const result = store.updateProfile(scope, id, patch)
-    if (result) setRecord(store.loadProfiles(scope))
+    if (result.ok) setRecord(store.loadProfiles(scope))
     return result
   }, [scope])
 

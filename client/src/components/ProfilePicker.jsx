@@ -17,15 +17,21 @@
  * via a mis-tap; rename covers the only realistic correction path.
  */
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useProfiles } from '../hooks/useProfiles.jsx'
-import { AVATARS, MAX_NAME_LEN } from '../lib/profileDefaults.js'
+import { AVATARS, MAX_NAME_LEN, validateName } from '../lib/profileDefaults.js'
 import ProfileAvatar from './ProfileAvatar.jsx'
 
 export default function ProfilePicker() {
   const { profiles, activeProfileId, createProfile, updateProfile, switchProfile } = useProfiles()
   const [userOpenedCreate, setUserOpenedCreate] = useState(false)
   const [renameTargetId, setRenameTargetId] = useState(null)
+  // Refs survive across renders without triggering re-render. We use one
+  // for the long-press timer and one to suppress the click that fires
+  // immediately after the long-press timer fires (otherwise the user
+  // would both rename AND switch in one gesture).
+  const longPressTimerRef = useRef(null)
+  const longPressFiredRef = useRef(false)
   const isFirstLaunch = profiles.length === 0
   // Modal opens only on explicit user action — welcome CTA on first
   // launch, "Add" card on subsequent visits. Never auto-pops.
@@ -35,19 +41,43 @@ export default function ProfilePicker() {
     : null
 
   const handlePick = (id) => {
+    // If a long-press just fired, swallow the trailing click so the
+    // profile isn't also switched.
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false
+      return
+    }
     if (id !== activeProfileId) switchProfile(id)
   }
 
   const handleLongPress = (id) => {
+    longPressFiredRef.current = true
     setRenameTargetId(id)
   }
 
-  // Long-press detector for rename: 600ms hold opens the rename modal.
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    // Reset the suppression flag ~100ms later so a quick subsequent
+    // tap on a different card isn't accidentally swallowed.
+    setTimeout(() => { longPressFiredRef.current = false }, 100)
+  }
+
+  // Long-press detector for rename: a 600ms hold (mouse, trackpad,
+  // or touch) opens the rename modal. Bound to onMouseDown + onTouchStart
+  // so trackpad users — who can't easily right-click — can still rename.
   const startLongPress = (id) => {
-    let timer = setTimeout(() => handleLongPress(id), 600)
-    const cancel = () => { clearTimeout(timer); timer = null }
-    window.addEventListener('mouseup', cancel, { once: true })
-    window.addEventListener('touchend', cancel, { once: true })
+    cancelLongPress()
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null
+      handleLongPress(id)
+    }, 600)
+    window.addEventListener('mouseup', cancelLongPress, { once: true })
+    window.addEventListener('touchend', cancelLongPress, { once: true })
+    window.addEventListener('mouseleave', cancelLongPress, { once: true })
+    window.addEventListener('blur', cancelLongPress, { once: true })
   }
 
   // ─── First-launch welcome card ─────────────────────────────────────
@@ -93,6 +123,7 @@ export default function ProfilePicker() {
                className={`profile-card ${p.id === activeProfileId ? 'profile-card--active' : ''}`}
                onClick={() => handlePick(p.id)}
                onContextMenu={(e) => { e.preventDefault(); handleLongPress(p.id) }}
+               onMouseDown={() => startLongPress(p.id)}
                onTouchStart={() => startLongPress(p.id)}
                role="button"
                tabIndex={0}
@@ -113,7 +144,7 @@ export default function ProfilePicker() {
       </div>
 
       <div className="profile-picker-hint">
-        Long-press a profile to rename it.
+        Long-press or right-click a profile to rename it.
       </div>
 
       {showCreate && (
@@ -165,6 +196,14 @@ function ProfileFormModal({ onClose, onSubmit, editingProfile = null, existingNa
 
   const submit = (e) => {
     if (e && e.preventDefault) e.preventDefault()
+    // Client-side duplicate-name validation (server-side equivalent lives
+    // in store.updateProfile as a safety net). Faster feedback + prevents
+    // a rename from succeeding with a name already used by a sibling.
+    const v = validateName(name, existingNames)
+    if (!v.ok) {
+      setError(v.error)
+      return
+    }
     const result = onSubmit(name, avatarId)
     if (!result || !result.ok) {
       setError(result?.error || 'Could not save profile.')
@@ -221,10 +260,6 @@ function ProfileFormModal({ onClose, onSubmit, editingProfile = null, existingNa
             {isEdit ? 'Save' : 'Create'}
           </button>
         </div>
-        {/* Suppress unused-var warning for existingNames (kept in the API
-            for clarity; validation currently happens inside createProfile
-            and updateProfile. Future enhancement may move it here). */}
-        <span hidden>{existingNames.length}</span>
       </form>
     </div>
   )

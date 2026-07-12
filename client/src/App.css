@@ -2655,18 +2655,25 @@ button:disabled {
   font-size: 1.55rem;
   cursor: pointer;
   border: 2px solid transparent;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+  /* Subtle baseline ring so the grid feels intentional even at rest. */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08),
+              0 2px 6px rgba(0, 0, 0, 0.15);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .profile-avatar--pick:hover {
   transform: scale(1.10);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.10),
-              0 4px 10px rgba(0, 0, 0, 0.20);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18),
+              0 4px 10px rgba(0, 0, 0, 0.25);
 }
 .profile-avatar--selected {
-  box-shadow: 0 0 0 3px var(--clr-accent),
-              inset 0 0 0 2px rgba(255, 255, 255, 0.22),
-              0 0 16px var(--clr-accent-soft);
+  /* Double-ring technique: a thin background-color gap between the
+   * circle and a thicker accent ring. The gap makes the ring readable
+   * in BOTH dark and light themes regardless of the avatar's tint. */
+  transform: scale(1.10);
+  box-shadow: 0 0 0 3px var(--clr-bg),
+              0 0 0 5px var(--clr-accent),
+              0 0 22px var(--clr-accent-soft),
+              0 6px 14px rgba(0, 0, 0, 0.35);
 }
 
 /* ─── Profile-switch transition overlay (220ms glow) ───────────────── */
@@ -2815,22 +2822,22 @@ button:disabled {
 }
 .profile-modal-label {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 500;
-  margin: 0.9rem 0 0.4rem;
-  color: var(--clr-text-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: var(--clr-text);
+  letter-spacing: 0;
 }
 .profile-modal-input {
   display: block;
   width: 100%;
-  padding: 0.6rem 0.75rem;
-  border-radius: 8px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
   border: 1px solid var(--clr-border);
   background: var(--clr-input);
   color: var(--clr-text);
   font: inherit;
+  font-size: 1rem;
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
