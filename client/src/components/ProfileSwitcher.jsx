@@ -47,11 +47,10 @@ export default function ProfileSwitcher({ onClose }) {
             <button
               key={p.id}
               type="button"
-              className={`profile-card profile-card--inline ${p.id === activeProfileId ? 'profile-card--active' : ''}`}
+              className={`profile-card profile-card--inline ${p.id === activeProfileId ? 'profile-card--active' : 'profile-card--muted'}`}
               onClick={() => handlePick(p.id)}
-              disabled={p.id === activeProfileId}
             >
-              <ProfileAvatar profile={p} size={56} active={p.id === activeProfileId} />
+              <ProfileAvatar profile={p} size={64} active={p.id === activeProfileId} />
               <div className="profile-name">{p.name}</div>
             </button>
           ))}
@@ -60,7 +59,7 @@ export default function ProfileSwitcher({ onClose }) {
             className="profile-card profile-card--inline profile-card--add"
             onClick={() => setShowCreate(true)}
           >
-            <span className="profile-avatar profile-avatar--placeholder" aria-hidden="true">＋</span>
+            <span className="profile-avatar profile-avatar--placeholder profile-avatar--inline" aria-hidden="true">＋</span>
             <div className="profile-name">Add new</div>
           </button>
         </div>

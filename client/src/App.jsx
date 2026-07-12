@@ -168,7 +168,7 @@ function AuthMenu() {
             {activeProfile && (
               <>
                 <div style={{ padding: '8px 12px', fontSize: '0.85rem', opacity: 0.75, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ProfileAvatar profile={activeProfile} size={24} />
+                  <ProfileAvatar profile={activeProfile} size={28} />
                   <span>Studying as <strong>{activeProfile.name}</strong></span>
                 </div>
                 <button
@@ -36111,9 +36111,25 @@ function App() {
  * AppGate — owns the picker gate. Renders the full-screen "Who's Studying?"
  * screen when no profile is active, otherwise renders the normal app
  * shell. Must be a child of <ProfilesProvider> (mounted in main.jsx).
+ *
+ * Also tracks profile-switch transitions: when activeProfileId changes,
+ * fires a brief full-screen glow overlay (220ms accent pulse) to make
+ * the switch feel intentional. First mount is ignored (no transition on
+ * initial load).
  */
 function AppGate({ mode, setMode, theme, toggleTheme, ActiveApp }) {
   const { ready, activeProfileId } = useProfiles()
+  const prevProfileIdRef = useRef(activeProfileId)
+  const [pulseKey, setPulseKey] = useState(0)
+
+  // Detect actual profile changes (not first mount).
+  useEffect(() => {
+    if (!ready) return
+    if (prevProfileIdRef.current && prevProfileIdRef.current !== activeProfileId) {
+      setPulseKey((k) => k + 1)
+    }
+    prevProfileIdRef.current = activeProfileId
+  }, [ready, activeProfileId])
 
   // Wait one render after mount so storage has been read before deciding.
   if (!ready) return null
@@ -36140,8 +36156,18 @@ function AppGate({ mode, setMode, theme, toggleTheme, ActiveApp }) {
           <Home onSelect={setMode} />
         )}
       </div>
+      {pulseKey > 0 && <ProfileSwitchPulse key={pulseKey} />}
     </div>
   )
+}
+
+/**
+ * ProfileSwitchPulse — full-screen accent glow that fires on profile
+ * change. Mounts → CSS keyframe runs once → unmounts. Re-mounting with
+ * a new key restarts the animation.
+ */
+function ProfileSwitchPulse() {
+  return <div className="profile-switch-overlay profile-switch-overlay--on" aria-hidden="true" />
 }
 
 /**

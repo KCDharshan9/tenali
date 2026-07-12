@@ -2,17 +2,15 @@
  * ProfilePicker — full-screen "Who's Studying?" gate.
  *
  * Renders when the user is logged in (or using the default scope) and no
- * active profile exists. On first ever launch (no profiles at all), it
- * collapses to just the "Add" card so the empty grid is not confusing.
+ * active profile exists.
+ *
+ * Two modes based on profile count:
+ *   - 0 profiles → welcome card with "Get started" CTA → create modal.
+ *   - ≥1 profile → grid of existing profiles + "Add" card.
  *
  * Tap a profile card → switches to that profile, picker closes.
  * Tap the "Add" card → opens the create modal.
  * Long-press / right-click a profile → confirm-delete flow.
- *
- * The picker is mounted by the root App component when `ready && user &&
- * !activeProfileId`. It owns its own modal; the parent doesn't need to
- * pass anything besides `onPick` (callback fired after a profile is
- * switched/created so the parent can re-render the rest of the shell).
  */
 
 import { useState } from 'react'
@@ -22,12 +20,12 @@ import ProfileAvatar from './ProfileAvatar.jsx'
 
 export default function ProfilePicker() {
   const { profiles, activeProfileId, createProfile, switchProfile, deleteProfile } = useProfiles()
-  // showCreate tracks user intent ("Add" card was tapped). The modal is
-  // additionally forced-open when there are zero profiles, so first-time
-  // users never see an empty grid.
   const [userOpenedCreate, setUserOpenedCreate] = useState(false)
   const [pendingDeleteId, setPendingDeleteId] = useState(null)
-  const showCreate = userOpenedCreate || profiles.length === 0
+  const isFirstLaunch = profiles.length === 0
+  // Modal opens only on explicit user action — welcome CTA on first
+  // launch, "Add" card on subsequent visits. Never auto-pops.
+  const showCreate = userOpenedCreate
 
   const handlePick = (id) => {
     if (id !== activeProfileId) switchProfile(id)
@@ -60,6 +58,38 @@ export default function ProfilePicker() {
 
   const onlyOne = profiles.length <= 1
 
+  // ─── First-launch welcome card ─────────────────────────────────────
+  if (isFirstLaunch) {
+    return (
+      <div className="profile-picker-screen" role="dialog" aria-modal="true" aria-label="Welcome">
+        <div className="profile-welcome">
+          <div className="profile-welcome-emoji" aria-hidden="true">📚</div>
+          <h1 className="profile-welcome-title">Welcome to Tenali</h1>
+          <p className="profile-welcome-text">
+            Pick your avatar and name to start learning.
+          </p>
+          <button
+            type="button"
+            className="profile-welcome-cta"
+            onClick={() => setUserOpenedCreate(true)}
+          >
+            Get started
+          </button>
+        </div>
+
+        {showCreate && (
+          <ProfileCreateModal
+            // No "Cancel" available on first launch — there is nothing to
+            // cancel back to. The modal closes only via Create or Esc.
+            onClose={null}
+            onCreate={(name, avatarId) => createProfile(name, avatarId)}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // ─── Normal picker (≥1 profile exists) ─────────────────────────────
   return (
     <div className="profile-picker-screen" role="dialog" aria-modal="true" aria-label="Choose your profile">
       <h1 className="profile-picker-title">Who's Studying?</h1>
@@ -75,7 +105,7 @@ export default function ProfilePicker() {
                role="button"
                tabIndex={0}
                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handlePick(p.id) } }}>
-            <ProfileAvatar profile={p} size={72} active={p.id === activeProfileId} />
+            <ProfileAvatar profile={p} size={96} active={p.id === activeProfileId} />
             <div className="profile-name">{p.name}</div>
           </div>
         ))}
@@ -97,7 +127,7 @@ export default function ProfilePicker() {
 
       {showCreate && (
         <ProfileCreateModal
-          onClose={() => profiles.length > 0 && setUserOpenedCreate(false)}
+          onClose={() => setUserOpenedCreate(false)}
           onCreate={(name, avatarId) => createProfile(name, avatarId)}
         />
       )}
@@ -135,7 +165,7 @@ function ProfileCreateModal({ onClose, onCreate }) {
   }
 
   return (
-    <div className="profile-modal-overlay" onClick={onClose}>
+    <div className="profile-modal-overlay" onClick={onClose || undefined}>
       <form className="profile-modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h2 className="profile-modal-title">New profile</h2>
 

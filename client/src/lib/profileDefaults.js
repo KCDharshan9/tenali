@@ -8,20 +8,21 @@
 // Avatar palette — every tint derives from the existing product palette
 // (warm browns, oranges, greens, restrained rose/lavender). No new color
 // themes are introduced; values are picked to read clearly against both
-// dark and light themes without competing with the .card chrome.
+// dark and light themes. Saturation is bumped (~15%) vs the muted v1
+// palette so each animal reads with personality on the picker grid.
 export const AVATARS = [
   { id: 'fox',      glyph: '🦊', tint: '#e8864a' }, // --clr-accent (dark)
-  { id: 'owl',      glyph: '🦉', tint: '#6b6058' }, // --clr-placeholder
-  { id: 'panda',    glyph: '🐼', tint: '#8a7e94' }, // warm gray-violet
-  { id: 'tiger',    glyph: '🐯', tint: '#c97a3a' }, // deeper accent
-  { id: 'lion',     glyph: '🦁', tint: '#d4a04a' }, // lighter accent
-  { id: 'cat',      glyph: '🐱', tint: '#c47a8a' }, // rose (palette family)
-  { id: 'dog',      glyph: '🐶', tint: '#4a8a7a' }, // teal-green
-  { id: 'bear',     glyph: '🐻', tint: '#8a6a52' }, // warm brown
-  { id: 'rabbit',   glyph: '🐰', tint: '#c47a9a' }, // rose variant
-  { id: 'koala',    glyph: '🐨', tint: '#9a8aac' }, // muted lavender
+  { id: 'owl',      glyph: '🦉', tint: '#7a6e62' }, // warm gray (deepened)
+  { id: 'panda',    glyph: '🐼', tint: '#a48eb8' }, // warm gray-violet
+  { id: 'tiger',    glyph: '🐯', tint: '#d97a2a' }, // vivid orange
+  { id: 'lion',     glyph: '🦁', tint: '#e0a838' }, // gold
+  { id: 'cat',      glyph: '🐱', tint: '#d96a8a' }, // rose
+  { id: 'dog',      glyph: '🐶', tint: '#3da692' }, // teal
+  { id: 'bear',     glyph: '🐻', tint: '#9a6e44' }, // warm brown
+  { id: 'rabbit',   glyph: '🐰', tint: '#d96ab0' }, // rose variant
+  { id: 'koala',    glyph: '🐨', tint: '#b298c5' }, // lavender
   { id: 'dragon',   glyph: '🐲', tint: '#5cb87a' }, // --clr-correct (dark)
-  { id: 'unicorn',  glyph: '🦄', tint: '#a87aca' }, // soft purple
+  { id: 'unicorn',  glyph: '🦄', tint: '#b889e0' }, // soft purple
 ]
 
 export const AVATAR_BY_ID = AVATARS.reduce((m, a) => {
