@@ -2478,6 +2478,29 @@ function _genericExplanation(t, d, s, step, ans) {
     else if (t === 'm54_converge') { step('Definition', `Dominant eigenvector.`); step('Answer', `dominant`); }
     else if (t === 'm54_iterate') { step('Concept', `Then normalize.`); step('Answer', `normalize`); }
     else if (t === 'm54_eigen1') { step('Property', `= 1.`); step('Answer', `1`); }
+    else if (t === 'm51_rank_low') { step('Concept', `Low-rank: fewer parameters than full matrix.`); step('Compute', `r(m+n−r) vs mn.`); step('Answer', `${ans} parameters`); }
+    else if (t === 'm52_cos') { step('Concept', `Cosine similarity = u·v / (‖u‖·‖v‖).`); step('Compute', `Dot product over product of magnitudes.`); step('Answer', `= ${ans}`); }
+    else if (t === 'm52_dot_calc') { step('Compute', `Multiply corresponding entries and sum.`); step('Answer', `= ${ans}`); }
+    else if (t === 'm52_matrix') { step('Concept', `Users × Items matrix dimensions.`); step('Answer', `${ans}`); }
+    else if (t === 'm53_two_step') { step('Concept', `Damping factor d: probability of following a link.`); step('Compute', `Random jump = 1−d.`); step('Answer', `= ${ans}`); }
+    else if (t === 'm53_eigenvalue') { step('Concept', `Stochastic matrix eigenvalue.`); step('Property', `Largest eigenvalue = 1 for Markov matrix.`); step('Answer', `= ${ans}`); }
+    else if (t === 'm54_step') { step('Compute', `Multiply matrix by current vector.`); step('Answer', `= (${ans})`); }
+    else if (t === 'm54_speed') { step('Concept', `Gap = λ₁ − λ₂.`); step('Compute', `Larger gap → faster convergence.`); step('Answer', `${ans}`); }
+    else if (t === 'm54_norm') { step('Concept', `Normalize to keep vector length = 1.`); step('Compute', `Divide by largest component.`); step('Answer', `= (${ans})`); }
+    else if (t === 'm54_det') { step('Compute', `Product of diagonal (for triangular matrix).`); step('Answer', `= ${ans}`); }
+    else if (t === 'm54_markov') { step('Property', `Each row of Markov matrix sums to 1.`); step('Answer', `${ans}`); }
+    else if (t === 'm54_converge_check') { step('Compute', `|λ₂/λ₁| < 1.`); step('Answer', `${ans}`); }
+    else if (t === 'm55_components') { step('Concept', `Principal components = eigenvectors of covariance matrix.`); step('Answer', `${ans}`); }
+    else if (t === 'm55_k') { step('Concept', `Choose k components capturing ≥ threshold variance.`); step('Answer', `k = ${ans}`); }
+    else if (t === 'm55_explained') { step('Concept', `First PC captures maximum variance.`); step('Answer', `${ans}`); }
+    else if (t === 'm55_ratio') { step('Compute', `Eigenvalue / sum of all eigenvalues.`); step('Answer', `= ${ans}`); }
+    else if (t === 'm55_eigen_rank') { step('Property', `Rank = number of non-zero eigenvalues.`); step('Answer', `rank = ${ans}`); }
+    else if (t === 'm56_decomp') { step('Concept', `SVD: A = UΣVᵀ. U columns = column space.`); step('Answer', `${ans}`); }
+    else if (t === 'm56_v') { step('Concept', `SVD: V columns = row space.`); step('Answer', `${ans}`); }
+    else if (t === 'm56_sigma') { step('Concept', `Σ diagonal = singular values (σ₁ ≥ σ₂ ≥ …).`); step('Answer', `${ans}`); }
+    else if (t === 'm56_rank1') { step('Concept', `Rank = number of non-zero singular values.`); step('Answer', `rank = ${ans}`); }
+    else if (t === 'm56_identity') { step('Property', `SVD of I: U=V=I, Σ=I.`); step('Answer', `${ans}`); }
+    else if (t === 'm56_sigma_count') { step('Compute', `Count non-zero σ values.`); step('Answer', `${ans}`); }
     else { step('Answer', `Correct answer: ${ans}`); }
   }
   else {
@@ -2537,6 +2560,9 @@ function LinearAlgebraApp({ onBack }) {
   const [mqResults, setMqResults] = useState([]);
   const [mqDifficulty, setMqDifficulty] = useState('easy');
   const [mqAdaptiveLevel, setMqAdaptiveLevel] = useState(0);
+  const [mqTimer, setMqTimer] = useState(0);
+  const mqTimerRef = useRef(null);
+  const mqTimerStartRef = useRef(Date.now());
   const ADAPTIVE_LEVELS = ['easy', 'medium', 'hard'];
   const effectiveMqDifficulty = mqDifficulty === 'adaptive' ? ADAPTIVE_LEVELS[Math.min(mqAdaptiveLevel, 2)] : mqDifficulty;
   const mqSubmittedRef = useRef(false);
@@ -2680,7 +2706,20 @@ function LinearAlgebraApp({ onBack }) {
     setMqAnswer(''); setMqScore(0); setMqQNum(0); setMqResults([]);
     setMqFeedback(''); setMqIsCorrect(null); setMqRevealed(false);
     setMqDifficulty('easy'); setMqAdaptiveLevel(0); mqSubmittedRef.current = false; mqAdvancedRef.current = false; mqSeenRef.current = new Set(); setMqExplanation([]);
+    setMqTimer(0); mqTimerStartRef.current = Date.now();
   };
+
+  useEffect(() => {
+    if (mqStarted && !mqRevealed && !mqFinished && !mqLoading) {
+      mqTimerStartRef.current = Date.now();
+      mqTimerRef.current = setInterval(() => {
+        setMqTimer(Math.floor((Date.now() - mqTimerStartRef.current) / 1000));
+      }, 250);
+      return () => clearInterval(mqTimerRef.current);
+    } else {
+      clearInterval(mqTimerRef.current);
+    }
+  }, [mqStarted, mqRevealed, mqFinished, mqLoading, mqQNum]);
 
   const loadMqQuestion = async () => {
     setMqLoading(true); setMqLoadError('');
@@ -2727,7 +2766,7 @@ function LinearAlgebraApp({ onBack }) {
         setMqAdaptiveLevel(prev => data.correct ? Math.min(prev + 1, 2) : Math.max(prev - 1, 0));
       }
       setMqFeedback(data.correct ? `Correct! ${data.display}` : `Incorrect. Answer: ${data.display}`);
-      setMqResults(prev => [...prev, { prompt: mqQuestion.prompt, userAnswer: String(ans).trim(), correctAnswer: data.display, correct: data.correct }]);
+      setMqResults(prev => [...prev, { prompt: mqQuestion.prompt, userAnswer: String(ans).trim(), correctAnswer: data.display, correct: data.correct, time: mqTimer }]);
       setMqExplanation(generateMqExplanation(mqQuestion));
     } catch (e) { mqSubmittedRef.current = false; }
   };
@@ -3089,7 +3128,7 @@ function LinearAlgebraApp({ onBack }) {
 
   return (
     <div className="la-module">
-      <button className="la-back" onClick={onBack}>&larr; Home</button>
+      {phase === 'modules' && <button className="la-back" onClick={onBack}>&larr; Home</button>}
 
       {phase === 'modules' && (
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
@@ -3203,6 +3242,11 @@ function LinearAlgebraApp({ onBack }) {
           {mqStarted && !mqFinished && (
             <div style={{ textAlign: 'center' }}>
               <div className="progress-pill center" style={{ marginBottom: 8 }}>Question {mqQNum}/{mqTotal} &middot; Score: {mqScore}{mqDifficulty === 'adaptive' ? ` · Level: ${effectiveMqDifficulty}` : ''}</div>
+              {mqStarted && !mqFinished && (
+                <div style={{ fontSize: '1rem', fontWeight: 600, color: mqTimer > 30 ? 'var(--clr-wrong)' : 'var(--la-accent)', marginBottom: 8 }}>
+                  {Math.floor(mqTimer / 60)}:{String(mqTimer % 60).padStart(2, '0')}
+                </div>
+              )}
               {mqLoading && <div style={{ padding: 20, color: 'var(--clr-text-soft)' }}>Loading…</div>}
               {!mqLoading && mqLoadError && <div style={{ padding: 16, color: 'var(--clr-wrong)' }}>{mqLoadError} <button onClick={loadMqQuestion}>Retry</button></div>}
               {mqQuestion && (
@@ -3276,11 +3320,12 @@ function LinearAlgebraApp({ onBack }) {
                 {!passed && <p style={{ fontSize: '0.9rem', color: 'var(--clr-dim)', margin: '4px 0' }}>Score at least 80% to unlock real-life applications and the next mission.</p>}
                 {mqResults.length > 0 && (
                   <table style={{ width: '100%', borderCollapse: 'collapse', margin: '12px 0', fontSize: '0.85rem' }}>
-                    <thead><tr style={{ borderBottom: '2px solid var(--clr-border)' }}><th style={{ textAlign: 'left', padding: 6 }}>#</th><th style={{ textAlign: 'left', padding: 6 }}>Question</th><th style={{ padding: 6 }}>Result</th></tr></thead>
+                    <thead><tr style={{ borderBottom: '2px solid var(--clr-border)' }}><th style={{ textAlign: 'left', padding: 6 }}>#</th><th style={{ textAlign: 'left', padding: 6 }}>Question</th><th style={{ padding: 6 }}>Time</th><th style={{ padding: 6 }}>Result</th></tr></thead>
                     <tbody>{mqResults.map((r, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid var(--clr-border)' }}>
                         <td style={{ padding: 6 }}>{i + 1}</td>
-                        <td style={{ textAlign: 'left', padding: 6, maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.prompt}</td>
+                        <td style={{ textAlign: 'left', padding: 6, maxWidth: 350, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.prompt}</td>
+                        <td style={{ padding: 6, color: (r.time || 0) > 30 ? 'var(--clr-wrong)' : 'var(--clr-text-soft)' }}>{r.time != null ? `${Math.floor(r.time / 60)}:${String(r.time % 60).padStart(2, '0')}` : '—'}</td>
                         <td style={{ padding: 6, color: r.correct ? 'var(--clr-correct)' : 'var(--clr-wrong)', fontWeight: 600 }}>{r.correct ? '✓' : '✗'}</td>
                       </tr>
                     ))}</tbody>

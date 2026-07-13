@@ -10341,6 +10341,7 @@ const MQ = (() => {
       if (isYesNo) {
         q.choices = ['Yes', 'No'];
         q.prompt = q.prompt.replace(/\(1=yes,0=no\)/g, '').replace(/\s+/g, ' ').trim();
+        q._yesno = true;
       } else {
         q.choices = generateChoices(q.answer, q.prompt);
       }
@@ -10365,7 +10366,7 @@ app.get('/la-mission-quiz-api/question', (req, res) => {
 });
 
 app.post('/la-mission-quiz-api/check', (req, res) => {
-  const { answer: expected, answerType, type, data, _answerText } = req.body;
+  const { answer: expected, answerType, type, data, prompt } = req.body;
   const raw = (req.body.userAnswer || '').trim();
   const norm = (s) => s.replace(/\s+/g, '').replace(/\u2212/g, '-').toLowerCase();
   const n = norm(raw);
@@ -10414,13 +10415,17 @@ app.post('/la-mission-quiz-api/check', (req, res) => {
     correct = textNorm(raw) === expLower || textNorm(raw).includes(expLower) || expLower.includes(textNorm(raw));
   }
 
-  if (!correct && ((type && type.startsWith('yesno')) || (_answerText && _answerText.includes('(1=yes,0=no)')))) {
+  if (!correct && !isNaN(parseFloat(expected)) && (n === 'yes' || n === 'no')) {
     const expNum = parseFloat(expected);
-    if ((expNum === 0 && n === 'yes') || (expNum === 1 && n === 'no')) {
+    if ((expNum === 1 && n === 'yes') || (expNum === 0 && n === 'no')) {
       correct = true;
     }
   }
-  res.json({ correct, display: expected, message: correct ? 'Correct!' : 'Incorrect' });
+  let display = expected;
+  if (!isNaN(parseFloat(expected)) && req.body._yesno) {
+    display = expected === '1' ? 'Yes' : 'No';
+  }
+  res.json({ correct, display, message: correct ? 'Correct!' : 'Incorrect' });
 });
 
 /**
