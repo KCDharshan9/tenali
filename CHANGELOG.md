@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2026-07-12
+
+### Added
+- **Proper Vocab Explorer Redesign**:
+  - Compiled and integrated the 80-term mathematical vocabulary corpus (`vocabCorpus.js`) across 8 Tiers (Reception, Year 1 to 6, and Beyond).
+  - Implemented `generateVocabQuestion(word, type, allWords)` supporting Recognition, Cloze Application, and Discrimination (Everyday vs. Math meaning) question variants.
+  - Implemented a 15-question adaptive Binet-style Placement Check to set starting tiers and auto-certify lower tiers.
+  - Built a multi-tier checklist dashboard showing locked, current, and certified status of all tiers.
+  - Integrated Bloom's taxonomy corrective loop with Reteach micro-levels targeting missed terms.
+  - Provided progress statistics showing vocabulary mastery count and estimation of time remaining.
+
+## [0.1.5] - 2026-07-11
+
+### Fixed
+- **Inversion Detector Pilot & Rename**:
+  - Completed Pilot Phase 1: Inversion Detector.
+  - Renamed Vachana monolithic component to align imports.
+  - Resolved word token button text wrapping overflows on mobile/narrow viewports in Sentence Dissector.
+
+## [0.1.4] - 2026-07-10
+
+### Fixed
+- **PR #18 Review Findings Resolved**:
+  - Replaced Readability Analyzer state updates inside `useEffect` with optimized `useMemo` computation.
+  - Cleaned up unused jumbled order variables.
+  - Fixed formula validator expectations in Numberless Problems.
+
 ## [0.1.3] - 2026-07-10
 
 ### Added
