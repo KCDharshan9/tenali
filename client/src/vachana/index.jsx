@@ -114,9 +114,81 @@ function pushTabUrl(tabId) {
 
 // ─── Vachana Shell ────────────────────────────────────────────────────────────
 
+// ── Styled Confirm Modal (shared) ────────────────────────────────────────────
+function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, confirmLabel = 'Continue', cancelLabel = 'Cancel', danger = false }) {
+  if (!isOpen) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.6)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      animation: 'fadeIn 0.15s ease-out'
+    }}>
+      <div style={{
+        background: 'var(--clr-surface)',
+        border: '1px solid var(--clr-border)',
+        borderRadius: '20px',
+        padding: '32px 28px',
+        maxWidth: '420px',
+        width: '90%',
+        boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+        animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}>
+        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%',
+            background: danger ? 'rgba(239,83,80,0.12)' : 'rgba(232,134,74,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+              stroke={danger ? '#ef5350' : 'var(--clr-accent)'}
+              strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+        </div>
+        <h3 style={{
+          margin: '0 0 10px', textAlign: 'center',
+          fontSize: '1.15rem', fontWeight: '700',
+          fontFamily: 'var(--font-display)', color: 'var(--clr-text)'
+        }}>{title}</h3>
+        <p style={{
+          margin: '0 0 28px', textAlign: 'center',
+          fontSize: '0.92rem', color: 'var(--clr-text-soft)', lineHeight: '1.55'
+        }}>{message}</p>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: '11px 0',
+              background: 'transparent',
+              border: '1px solid var(--clr-border)',
+              borderRadius: '10px', cursor: 'pointer',
+              color: 'var(--clr-text-soft)', fontWeight: '600', fontSize: '0.9rem',
+            }}
+          >{cancelLabel}</button>
+          <button
+            onClick={onConfirm}
+            style={{
+              flex: 1, padding: '11px 0',
+              background: danger ? '#ef5350' : 'var(--clr-accent)',
+              border: 'none', borderRadius: '10px', cursor: 'pointer',
+              color: '#fff', fontWeight: '700', fontSize: '0.9rem',
+            }}
+          >{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Vachana({ onBack }) {
   // Pre-select tab based on URL (e.g. /vachana/vocab → 'vocab')
   const [activeTab, setActiveTab] = useState(getTabFromUrl);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   // Keep URL in sync when tab changes programmatically
   const selectTab = (id) => {
@@ -125,6 +197,45 @@ export default function Vachana({ onBack }) {
   };
 
   const goBack = () => {
+    if (activeTab === 'vocab') {
+      try {
+        const saved = localStorage.getItem('vachana_vocab_state');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.isPlacing && !parsed.placementCompleted) {
+            const confirmExit = true;
+            if (!confirmExit) {
+              // replaced with styled modal below
+            }
+            setConfirmModal({
+              title: 'Exit Placement Test?',
+              message: 'Your placement test progress will be lost if you exit now.',
+              danger: true,
+              onConfirm: () => {
+                setConfirmModal(null);
+                // Reset placement progress so they start clean next time
+                try {
+                  const s2 = localStorage.getItem('vachana_vocab_state');
+                  if (s2) {
+                    const p2 = JSON.parse(s2);
+                    p2.isPlacing = false;
+                    p2.placementStep = 1;
+                    p2.placementAnswers = [];
+                    localStorage.setItem('vachana_vocab_state', JSON.stringify(p2));
+                  }
+                } catch (err) {
+                  console.error('Error resetting vocab state', err);
+                }
+                setActiveTab(null);
+              }
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Error reading/writing vocab state", err);
+      }
+    }
     selectTab(null);
   };
 
@@ -141,7 +252,7 @@ export default function Vachana({ onBack }) {
   const ExerciseComponent = activeTab ? EXERCISE_COMPONENTS[activeTab] : null;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1rem', color: 'var(--clr-text)' }}>
+    <div style={{ maxWidth: 1100, width: '100%', margin: '0 auto', padding: '1rem', color: 'var(--clr-text)' }}>
 
       {/* Vachana Header — shown on dashboard */}
       {activeTab === null && (
@@ -206,7 +317,7 @@ export default function Vachana({ onBack }) {
         </div>
       ) : (
         /* ── Active Exercise Workspace ── */
-        <div style={{ background: 'var(--clr-card, #1e1e24)', border: '1px solid var(--clr-border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+        <div style={{ background: 'var(--clr-card, #1e1e24)', border: '1px solid var(--clr-border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)', width: '100%', boxSizing: 'border-box' }}>
           {/* Active Tab Header (Minimalist) */}
           <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
             <button

@@ -1,6 +1,124 @@
 import { useState, useEffect, useRef } from 'react';
 import { VOCAB_CORPUS } from '../../vocabCorpus';
 
+// Custom SVG Icons to replace emojis in Vocab Explorer
+const ShieldsIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', color: 'var(--clr-accent)' }}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+const ShieldsIconSmall = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: '4px' }}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+const TargetIconLarge = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', color: 'var(--clr-accent)' }}>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="2" />
+  </svg>
+);
+const TargetIconSmall = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="2" />
+  </svg>
+);
+const DocumentIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+  </svg>
+);
+const BrainIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5a5.25 5.25 0 0 0 2.22 4.28C6.9 12.26 7 12.8 7 13.1v1.9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1.9c0-.3.1-.84.78-1.32A5.25 5.25 0 0 0 20 7.5A5.5 5.5 0 0 0 14.5 2z" />
+    <line x1="9" y1="22" x2="15" y2="22" />
+    <line x1="10" y1="18" x2="14" y2="18" />
+  </svg>
+);
+const ScaleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="3" x2="12" y2="21" />
+    <line x1="6" y1="12" x2="18" y2="12" />
+    <path d="M6 12l-3 6h6l-3-6M18 12l-3 6h6l-3-6" />
+  </svg>
+);
+const RocketIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: '4px' }}>
+    <path d="M6 18L2 22L6 21L10 17" />
+    <path d="M12 2C9 2 6 5 6 9c0 2 1 3 3 5l2 2c2 2 3 3 5 3c4 0 7-3 7-7c0-3-3-6-7-6z" />
+    <line x1="17" y1="7" x2="17.01" y2="7" />
+  </svg>
+);
+const TrophyIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }}>
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+    <path d="M4 22h16" />
+    <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34" />
+    <path d="M12 2a6 6 0 0 0-6 6v3.5c0 3 3 5.5 6 5.5s6-2.5 6-5.5V8a6 6 0 0 0-6-6z" />
+  </svg>
+);
+const TrophyIconBig = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '16px', color: 'var(--clr-accent)' }}>
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+    <path d="M4 22h16" />
+    <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34" />
+    <path d="M12 2a6 6 0 0 0-6 6v3.5c0 3 3 5.5 6 5.5s6-2.5 6-5.5V8a6 6 0 0 0-6-6z" />
+  </svg>
+);
+const RefreshIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}>
+    <path d="M23 4v6h-6" />
+    <path d="M1 20v-6h6" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>
+);
+const CheckIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}>
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const CurrentIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="2" />
+  </svg>
+);
+const BookOpenIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: '6px' }}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+const TermSelectedIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px', color: 'var(--clr-accent)' }}>
+    <circle cx="12" cy="12" r="6" />
+  </svg>
+);
+const TermUnselectedIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px', opacity: 0.4 }}>
+    <circle cx="12" cy="12" r="8" />
+  </svg>
+);
+const SwordsIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: '6px' }}>
+    <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" />
+    <line x1="13" y1="19" x2="19" y2="13" />
+    <line x1="16" y1="16" x2="20" y2="20" />
+    <line x1="19" y1="21" x2="21" y2="19" />
+    <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5" />
+    <line x1="5" y1="14" x2="9" y2="18" />
+    <line x1="7" y1="17" x2="3" y2="21" />
+    <line x1="3" y1="19" x2="5" y2="21" />
+  </svg>
+);
+
 // Helper to generate a question structure for Vocab Explorer
 function generateVocabQuestion(word, type, allWords) {
   const strandWords = allWords.filter(w => w.strand === word.strand && w.id !== word.id);
@@ -154,6 +272,88 @@ const getLevelType = (levelIndex) => {
   return 'standard';
 };
 
+// ── Styled Confirm Modal ──────────────────────────────────────────────────────
+function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, confirmLabel = 'Continue', cancelLabel = 'Cancel', danger = false }) {
+  if (!isOpen) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.6)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      animation: 'fadeIn 0.15s ease-out'
+    }}>
+      <div style={{
+        background: 'var(--clr-surface)',
+        border: '1px solid var(--clr-border)',
+        borderRadius: '20px',
+        padding: '32px 28px',
+        maxWidth: '420px',
+        width: '90%',
+        boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+        animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}>
+        {/* Icon */}
+        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%',
+            background: danger ? 'rgba(239,83,80,0.12)' : 'rgba(232,134,74,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+              stroke={danger ? '#ef5350' : 'var(--clr-accent)'}
+              strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+        </div>
+        {/* Title */}
+        <h3 style={{
+          margin: '0 0 10px', textAlign: 'center',
+          fontSize: '1.15rem', fontWeight: '700',
+          fontFamily: 'var(--font-display)', color: 'var(--clr-text)'
+        }}>{title}</h3>
+        {/* Message */}
+        <p style={{
+          margin: '0 0 28px', textAlign: 'center',
+          fontSize: '0.92rem', color: 'var(--clr-text-soft)', lineHeight: '1.55'
+        }}>{message}</p>
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: '11px 0',
+              background: 'transparent',
+              border: '1px solid var(--clr-border)',
+              borderRadius: '10px', cursor: 'pointer',
+              color: 'var(--clr-text-soft)', fontWeight: '600', fontSize: '0.9rem',
+              transition: 'border-color 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--clr-border)'}
+          >{cancelLabel}</button>
+          <button
+            onClick={onConfirm}
+            style={{
+              flex: 1, padding: '11px 0',
+              background: danger ? '#ef5350' : 'var(--clr-accent)',
+              border: 'none', borderRadius: '10px', cursor: 'pointer',
+              color: '#fff', fontWeight: '700', fontSize: '0.9rem',
+              boxShadow: danger ? '0 4px 14px rgba(239,83,80,0.3)' : '0 4px 14px rgba(232,134,74,0.3)',
+              transition: 'filter 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+            onMouseLeave={e => e.currentTarget.style.filter = 'brightness(1)'}
+          >{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function VocabExplorer() {
   // --- Vocab Explorer State (Mastery-Driven) ---
   const [vocabState, setVocabState] = useState(() => {
@@ -201,6 +401,8 @@ export default function VocabExplorer() {
   const [vocabHasAnswered, setVocabHasAnswered] = useState(false);
   const [vocabSessionFinished, setVocabSessionFinished] = useState(false);
   const [vocabSessionSelections, setVocabSessionSelections] = useState([]);
+  const [vocabIsLoadingPlacement, setVocabIsLoadingPlacement] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm }
   const autoAdvanceTimeoutRef = useRef(null);
   const clearAutoAdvance = () => {
     if (autoAdvanceTimeoutRef.current) {
@@ -217,14 +419,27 @@ export default function VocabExplorer() {
     };
   }, []);
 
-  const startVocabSession = (customType = null) => {
-    const tierWords = VOCAB_CORPUS.filter(w => w.tier === vocabState.currentTier);
-    let levelType = customType || (vocabState.currentLevelIndex === 7 ? 'final_exam' : getLevelType(vocabState.currentLevelIndex));
+  const startVocabSession = (customType = null, customTier = null) => {
+    const targetTier = customTier || vocabState.currentTier;
+    const targetLevelIndex = (customTier && customTier !== vocabState.currentTier) ? 1 : vocabState.currentLevelIndex;
+    const targetFailedLevelIndex = (customTier && customTier !== vocabState.currentTier) ? null : vocabState.failedLevelIndex;
+
+    const tierWords = VOCAB_CORPUS.filter(w => w.tier === targetTier);
+    let levelType = customType || (targetLevelIndex === 7 ? 'final_exam' : getLevelType(targetLevelIndex));
     let targetWords = [];
     let questions = [];
 
-    if (vocabState.failedLevelIndex !== null) {
+    if (targetFailedLevelIndex !== null) {
       levelType = 'reteach';
+    }
+
+    if (customTier && customTier !== vocabState.currentTier) {
+      saveVocabState({
+        ...vocabState,
+        currentTier: customTier,
+        currentLevelIndex: 1,
+        failedLevelIndex: null
+      });
     }
 
     if (levelType === 'teach') {
@@ -235,7 +450,7 @@ export default function VocabExplorer() {
       setVocabSessionSelections([]);
       setVocabSessionIncorrectWords([]);
       setVocabSessionFinished(false);
-      const chunkIndex = vocabState.currentLevelIndex === 1 ? 0 : 5;
+      const chunkIndex = targetLevelIndex === 1 ? 0 : 5;
       if (tierWords[chunkIndex]) {
         setSelectedTerm(tierWords[chunkIndex].term);
       }
@@ -243,7 +458,7 @@ export default function VocabExplorer() {
     }
 
     if (levelType === 'standard') {
-      const startIdx = vocabState.currentLevelIndex === 2 ? 0 : 5;
+      const startIdx = targetLevelIndex === 2 ? 0 : 5;
       targetWords = tierWords.slice(startIdx, startIdx + 5);
       
       targetWords.forEach(word => {
@@ -256,8 +471,8 @@ export default function VocabExplorer() {
       });
       questions.sort(() => 0.5 - Math.random());
     } else if (levelType === 'review') {
-      const pool = VOCAB_CORPUS.filter(w => w.tier < vocabState.currentTier || 
-        (w.tier === vocabState.currentTier && tierWords.indexOf(w) < 10));
+      const pool = VOCAB_CORPUS.filter(w => w.tier < targetTier || 
+        (w.tier === targetTier && tierWords.indexOf(w) < 10));
       
       const sortedPool = [...pool].sort((a, b) => {
         const stateA = vocabState.wordStates[a.id]?.status || 'unseen';
@@ -333,9 +548,11 @@ export default function VocabExplorer() {
   const startPlacementCheck = () => {
     const startTier = 4;
     const wordPool = VOCAB_CORPUS.filter(w => w.tier === startTier);
+    // eslint-disable-next-line react-hooks/purity
     const randomWord = wordPool[Math.floor(Math.random() * wordPool.length)];
     const types = ['recognition', 'application'];
     if (randomWord.is_confusable) types.push('discrimination');
+    // eslint-disable-next-line react-hooks/purity
     const randType = types[Math.floor(Math.random() * types.length)];
     const question = generateVocabQuestion(randomWord, randType, VOCAB_CORPUS);
 
@@ -380,10 +597,12 @@ export default function VocabExplorer() {
       const seenWordIds = newAnswers.map(a => a.wordId);
       let availableWords = wordPool.filter(w => !seenWordIds.includes(w.id));
       if (availableWords.length === 0) availableWords = wordPool;
+      // eslint-disable-next-line react-hooks/purity
       const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
       
       const types = ['recognition', 'application'];
       if (randomWord.is_confusable) types.push('discrimination');
+      // eslint-disable-next-line react-hooks/purity
       const randType = types[Math.floor(Math.random() * types.length)];
       const nextQ = generateVocabQuestion(randomWord, randType, VOCAB_CORPUS);
 
@@ -676,108 +895,269 @@ export default function VocabExplorer() {
     }, 50);
   };
 
+  const renderTierCard = (tierNum) => {
+    const isCurrent = vocabState.currentTier === tierNum;
+    const status = vocabState.tierStates[String(tierNum)] || (tierNum === 1 ? 'in_progress' : 'locked');
+    const isCertified = status === 'certified';
+    const isUnlocked = true; // All tiers are fully unlocked and accessible by default
+
+    let tierLabel = '';
+    if (tierNum === 1) tierLabel = 'Reception';
+    else if (tierNum === 8) tierLabel = 'Beyond KS3';
+    else tierLabel = `Year ${tierNum - 1}`;
+
+    let color = 'rgba(255,255,255,0.35)';
+    let bg = 'rgba(255,255,255,0.01)';
+    let border = '1px solid rgba(255,255,255,0.04)';
+    
+    if (isCurrent) {
+      color = 'var(--clr-text)';
+      bg = 'rgba(232, 134, 74, 0.06)';
+      border = '1px solid rgba(232, 134, 74, 0.4)';
+    } else if (isCertified) {
+      color = 'var(--clr-text)';
+      bg = 'rgba(92, 184, 122, 0.04)';
+      border = '1px solid rgba(92, 184, 122, 0.25)';
+    } else if (isUnlocked) {
+      color = 'var(--clr-text)';
+      bg = 'rgba(255,255,255,0.03)';
+      border = '1px solid rgba(255,255,255,0.08)';
+    }
+
+    return (
+      <div
+        key={tierNum}
+        onClick={() => {
+          // Click directly starts the session for this tier!
+          startVocabSession(null, tierNum);
+        }}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          padding: '16px',
+          borderRadius: '16px',
+          background: bg,
+          border,
+          color,
+          cursor: 'pointer',
+          boxShadow: isCurrent ? '0 4px 15px rgba(232, 134, 74, 0.15)' : 'none',
+          transition: 'all 0.2s ease',
+          minHeight: '110px'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          if (!isCurrent) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          if (!isCurrent) e.currentTarget.style.borderColor = isCertified ? 'rgba(92, 184, 122, 0.25)' : 'rgba(255,255,255,0.08)';
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: '12px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', color: isCurrent ? 'var(--clr-accent)' : 'var(--clr-text-soft)' }}>
+            LEVEL {tierNum}
+          </span>
+          {isCertified ? (
+            <span style={{ color: 'var(--clr-correct)', fontSize: '0.85rem', fontWeight: '700', display: 'flex', alignItems: 'center' }}>
+              <CheckIcon /> Certified
+            </span>
+          ) : isCurrent ? (
+            <span style={{ color: 'var(--clr-accent)', fontSize: '0.85rem', fontWeight: '700', display: 'flex', alignItems: 'center' }}>
+              <CurrentIcon /> Current
+            </span>
+          ) : null}
+        </div>
+        
+        <strong style={{ fontSize: '1.05rem', fontWeight: '600', color: 'var(--clr-text)' }}>
+          {tierLabel}
+        </strong>
+      </div>
+    );
+  };
+
   return (
+    <>
+      <ConfirmModal
+        isOpen={!!confirmModal}
+        title={confirmModal?.title}
+        message={confirmModal?.message}
+        danger
+        confirmLabel="Yes, Reset"
+        cancelLabel="Keep Progress"
+        onConfirm={confirmModal?.onConfirm}
+        onCancel={() => setConfirmModal(null)}
+      />
     <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
       {/* Header section */}
 
-      {/* 1. PLACEMENT CHOOSER */}
-      {!vocabState.placementCompleted && !vocabState.isPlacing && (
+      {/* 1.5 ADAPTIVE TEST LOADING SCREEN */}
+      {vocabIsLoadingPlacement && (
         <div style={{
           background: 'var(--clr-surface)',
           border: '1px solid var(--clr-border)',
-          borderRadius: '20px',
-          padding: '40px 24px',
+          borderRadius: '24px',
+          padding: '40px 28px',
           textAlign: 'center',
-          boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
-          maxWidth: '720px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+          width: '100%',
           margin: '20px auto',
-          animation: 'slideUp 0.4s ease-out'
+          animation: 'scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            background: 'rgba(232, 134, 74, 0.1)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '2rem',
-            margin: '0 auto 20px',
-            color: 'var(--clr-accent)',
-            border: '1px solid rgba(232, 134, 74, 0.2)'
+          <div style={{ marginBottom: '16px', transform: 'scale(1.8)' }}><ShieldsIcon /></div>
+          <h4 style={{
+            fontSize: '1.6rem',
+            fontWeight: '700',
+            marginBottom: '8px',
+            fontFamily: 'var(--font-display)',
+            color: 'var(--clr-accent)'
           }}>
-            🎯
-          </div>
-
+            Placement Test: Test Your Might
+          </h4>
           <p style={{
             color: 'var(--clr-text-soft)',
-            fontSize: '1rem',
+            fontSize: '0.98rem',
             lineHeight: '1.6',
             marginBottom: '32px',
             maxWidth: '540px',
             margin: '0 auto 32px'
           }}>
-            Master foundational mathematical vocabulary from Reception through Year 6 and Beyond using adaptive spaced retrieval practice.
+            This adaptive test dynamically adjusts difficulty to calibrate and match your vocabulary tier. You will be tested on the following question types:
           </p>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+
+          {/* Categories Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '16px',
+            textAlign: 'left',
+            marginBottom: '36px'
+          }}>
+            {/* Category 1 */}
+            <div style={{
+              background: 'var(--clr-card)',
+              border: '1px solid var(--clr-border)',
+              borderRadius: '16px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <TargetIconLarge />
+                <strong style={{ fontSize: '0.9rem', color: '#2ea043', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  Mathematical Definition
+                </strong>
+              </div>
+              <span style={{ fontSize: '0.85rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
+                Identify the formal mathematical definition of key vocabulary terms.
+              </span>
+            </div>
+
+            {/* Category 2 */}
+            <div style={{
+              background: 'var(--clr-card)',
+              border: '1px solid var(--clr-border)',
+              borderRadius: '16px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <DocumentIcon />
+                <strong style={{ fontSize: '0.9rem', color: '#9c27b0', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  Term Identification
+                </strong>
+              </div>
+              <span style={{ fontSize: '0.85rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
+                Match terms to their corresponding formal math definitions.
+              </span>
+            </div>
+
+            {/* Category 3 */}
+            <div style={{
+              background: 'var(--clr-card)',
+              border: '1px solid var(--clr-border)',
+              borderRadius: '16px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BrainIcon />
+                <strong style={{ fontSize: '0.9rem', color: '#2196f3', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  Context Application
+                </strong>
+              </div>
+              <span style={{ fontSize: '0.85rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
+                Apply math terms correctly to fill in missing gaps in sentences.
+              </span>
+            </div>
+
+            {/* Category 4 */}
+            <div style={{
+              background: 'var(--clr-card)',
+              border: '1px solid var(--clr-border)',
+              borderRadius: '16px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ScaleIcon />
+                <strong style={{ fontSize: '0.9rem', color: '#e67e22', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  Semantic Discrimination
+                </strong>
+              </div>
+              <span style={{ fontSize: '0.85rem', color: 'var(--clr-text-soft)', lineHeight: '1.4' }}>
+                Distinguish everyday English senses from formal math meanings.
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
             <button
-              onClick={startPlacementCheck}
+              onClick={() => setVocabIsLoadingPlacement(false)}
+              style={{
+                padding: '12px 24px',
+                background: 'transparent',
+                border: '1px solid var(--clr-border)',
+                color: 'var(--clr-text-soft)',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.95rem'
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--clr-border)'}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setVocabIsLoadingPlacement(false);
+                startPlacementCheck();
+              }}
               className="submit-btn"
               style={{
-                width: '100%',
-                maxWidth: '360px',
-                padding: '14px 28px',
+                padding: '12px 32px',
                 background: 'var(--clr-accent)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '12px',
                 cursor: 'pointer',
                 fontWeight: '600',
-                fontSize: '1rem',
-                boxShadow: '0 4px 15px rgba(232, 134, 74, 0.3)',
-                transition: 'transform 0.15s ease, filter 0.15s ease'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)'; }}
-              onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
-            >
-              Take Adaptive Placement Check 🎯
-            </button>
-            <button
-              onClick={() => {
-                const newState = {
-                  ...vocabState,
-                  placementCompleted: true,
-                  isPlacing: false,
-                  currentTier: 1,
-                  currentLevelIndex: 1,
-                  tierStates: { ...vocabState.tierStates, '1': 'in_progress' }
-                };
-                saveVocabState(newState);
-              }}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--clr-border)',
-                color: 'var(--clr-text-soft)',
-                padding: '12px 24px',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                fontSize: '0.92rem',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                width: '100%',
-                maxWidth: '360px'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'var(--clr-hover)';
-                e.currentTarget.style.color = 'var(--clr-text)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'var(--clr-text-soft)';
+                fontSize: '0.95rem',
+                boxShadow: '0 4px 15px rgba(232, 134, 74, 0.3)'
               }}
             >
-              Skip & Start from Tier 1 (Reception)
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                Begin Adaptive Test <RocketIcon />
+              </div>
             </button>
           </div>
         </div>
@@ -785,7 +1165,7 @@ export default function VocabExplorer() {
 
       {/* 2. PLACEMENT / ACTIVE SESSION QUIZ SCREEN */}
       {vocabSessionActive && !vocabSessionFinished && vocabSessionQuestions.length > 0 && (
-        <div style={{ maxWidth: '680px', margin: '0 auto', animation: 'fadeIn 0.3s ease-out' }}>
+        <div style={{ width: '100%', margin: '0 auto', animation: 'fadeIn 0.3s ease-out' }}>
           {/* Progress Header */}
           <div style={{ marginBottom: '20px' }}>
             <div style={{
@@ -803,7 +1183,7 @@ export default function VocabExplorer() {
                     ? `Reteach Micro-Level — Question ${vocabSessionQIndex + 1} of ${vocabSessionQuestions.length}`
                     : vocabState.currentLevelIndex === 7
                       ? `Final Mastery Exam — Question ${vocabSessionQIndex + 1} of ${vocabSessionQuestions.length}`
-                      : `Tier ${vocabState.currentTier} Level ${vocabState.currentLevelIndex} — Question ${vocabSessionQIndex + 1} of ${vocabSessionQuestions.length}`
+                      : `Level ${vocabState.currentTier} · Stage ${vocabState.currentLevelIndex} — Question ${vocabSessionQIndex + 1} of ${vocabSessionQuestions.length}`
                 }
               </span>
               <span style={{
@@ -871,61 +1251,112 @@ export default function VocabExplorer() {
                 </div>
               ) : <div />}
 
-              {/* Mathematical Definition Badge for definition questions */}
-              {vocabSessionQuestions[vocabSessionQIndex].id?.endsWith('_rec_def') && (
-                <div style={{
-                  fontSize: '0.72rem',
-                  fontWeight: '700',
-                  textTransform: 'uppercase',
-                  color: 'var(--clr-correct, #2ea043)',
-                  background: 'rgba(46, 160, 67, 0.1)',
-                  border: '1px solid rgba(46, 160, 67, 0.2)',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  letterSpacing: '0.05em'
-                }}>
-                  Mathematical Definition
-                </div>
-              )}
+              {/* Question Type Badge */}
+              {(() => {
+                const qId = vocabSessionQuestions[vocabSessionQIndex].id || '';
+                let badgeText = '';
+                let badgeStyle = {};
+                
+                if (qId.endsWith('_rec_def')) {
+                  badgeText = 'Mathematical Definition';
+                  badgeStyle = { color: 'var(--clr-correct, #2ea043)', background: 'rgba(46, 160, 67, 0.1)', border: '1px solid rgba(46, 160, 67, 0.2)' };
+                } else if (qId.endsWith('_rec_term')) {
+                  badgeText = 'Term Identification';
+                  badgeStyle = { color: '#9c27b0', background: 'rgba(156, 39, 176, 0.1)', border: '1px solid rgba(156, 39, 176, 0.2)' };
+                } else if (qId.endsWith('_app')) {
+                  badgeText = 'Context Application';
+                  badgeStyle = { color: '#2196f3', background: 'rgba(33, 150, 243, 0.1)', border: '1px solid rgba(33, 150, 243, 0.2)' };
+                } else if (qId.includes('_disc')) {
+                  badgeText = 'Semantic Discrimination';
+                  badgeStyle = { color: '#e67e22', background: 'rgba(230, 126, 34, 0.1)', border: '1px solid rgba(230, 126, 34, 0.2)' };
+                }
+
+                if (badgeText) {
+                  return (
+                    <div style={{
+                      fontSize: '0.72rem',
+                      fontWeight: '700',
+                      textTransform: 'uppercase',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      letterSpacing: '0.05em',
+                      ...badgeStyle
+                    }}>
+                      {badgeText}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
-            {/* Question Prompt or Center-Aligned Big Term */}
-            {vocabSessionQuestions[vocabSessionQIndex].id?.endsWith('_rec_def') ? (
-              <div style={{
-                textAlign: 'center',
-                margin: '20px 0 36px 0'
-              }}>
+            {/* Question Prompt Center-Aligned Layout */}
+            {(() => {
+              const q = vocabSessionQuestions[vocabSessionQIndex];
+              const qId = q.id || '';
+              const w = VOCAB_CORPUS.find(x => x.id === q.wordId);
+              
+              let primaryContent = '';
+              let subtitleText = '';
+              
+              if (qId.endsWith('_rec_def')) {
+                primaryContent = w?.term || '';
+                subtitleText = 'Select the correct mathematical definition for this term';
+              } else if (qId.endsWith('_rec_term')) {
+                primaryContent = w ? `"${w.definition}"` : '';
+                subtitleText = 'Select the mathematical term that matches this definition';
+              } else if (qId.endsWith('_app')) {
+                const parts = q.prompt.split('\n\n');
+                primaryContent = parts[1] || q.prompt;
+                subtitleText = 'Select the correct mathematical term to fill in the blank';
+              } else if (qId.includes('_disc')) {
+                const parts = q.prompt.split('\n\n');
+                primaryContent = parts[1] || q.prompt;
+                subtitleText = `Identify the correct sense of the word "${w?.term}" in this sentence`;
+              } else {
+                return (
+                  <div style={{
+                    fontSize: '1.28rem',
+                    fontWeight: '600',
+                    fontFamily: 'var(--font-display)',
+                    color: 'var(--clr-text)',
+                    lineHeight: '1.5',
+                    marginBottom: '28px',
+                    letterSpacing: '-0.01em'
+                  }}>
+                    {q.prompt}
+                  </div>
+                );
+              }
+
+              return (
                 <div style={{
-                  fontSize: '2.5rem',
-                  fontWeight: '800',
-                  fontFamily: 'var(--font-display)',
-                  color: 'var(--clr-text)',
-                  letterSpacing: '-0.02em',
-                  marginBottom: '8px'
+                  textAlign: 'center',
+                  margin: '20px 0 36px 0'
                 }}>
-                  {VOCAB_CORPUS.find(w => w.id === vocabSessionQuestions[vocabSessionQIndex].wordId)?.term}
+                  <div style={{
+                    fontSize: qId.endsWith('_rec_def') ? '2.5rem' : '1.45rem',
+                    fontWeight: qId.endsWith('_rec_def') ? '800' : '600',
+                    fontFamily: 'var(--font-display)',
+                    color: 'var(--clr-text)',
+                    lineHeight: '1.5',
+                    letterSpacing: '-0.02em',
+                    marginBottom: '10px',
+                    whiteSpace: 'pre-wrap',
+                    padding: '0 20px'
+                  }}>
+                    {primaryContent}
+                  </div>
+                  <div style={{
+                    fontSize: '0.92rem',
+                    color: 'var(--clr-text-soft)',
+                    fontWeight: '500'
+                  }}>
+                    {subtitleText}
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: '0.92rem',
-                  color: 'var(--clr-text-soft)',
-                  fontWeight: '500'
-                }}>
-                  Select the correct mathematical definition for this term
-                </div>
-              </div>
-            ) : (
-              <div style={{
-                fontSize: '1.28rem',
-                fontWeight: '600',
-                fontFamily: 'var(--font-display)',
-                color: 'var(--clr-text)',
-                lineHeight: '1.5',
-                marginBottom: '28px',
-                letterSpacing: '-0.01em'
-              }}>
-                {vocabSessionQuestions[vocabSessionQIndex].prompt}
-              </div>
-            )}
+              );
+            })()}
 
             {/* Option buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
@@ -1200,10 +1631,10 @@ export default function VocabExplorer() {
           }}>
             <div>
               <h4 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', fontFamily: 'var(--font-display)' }}>
-                Level {vocabState.currentLevelIndex}: Teach & Try 📖
+                Level {vocabState.currentLevelIndex}: Teach & Try <BookOpenIcon />
               </h4>
               <span style={{ fontSize: '0.85rem', color: 'var(--clr-text-soft)' }}>
-                Tier {vocabState.currentTier}: Mathematical Vocabulary
+                Level {vocabState.currentTier}: Mathematical Vocabulary
               </span>
             </div>
             <span style={{
@@ -1256,7 +1687,7 @@ export default function VocabExplorer() {
                         if (!isSelected) e.currentTarget.style.borderColor = 'var(--clr-border)';
                       }}
                     >
-                      <span style={{ marginRight: '8px' }}>{isSelected ? '📖' : '▫️'}</span>
+                      {isSelected ? <TermSelectedIcon /> : <TermUnselectedIcon />}
                       {word.term}
                     </button>
                   );
@@ -1380,7 +1811,7 @@ export default function VocabExplorer() {
           borderRadius: '24px',
           padding: '36px 24px',
           textAlign: 'center',
-          maxWidth: '600px',
+          width: '100%',
           margin: '20px auto',
           boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
           animation: 'scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
@@ -1424,20 +1855,28 @@ export default function VocabExplorer() {
                       boxShadow: '0 4px 12px rgba(232, 134, 74, 0.15)'
                     }}>
                       {vocabState.currentTier === 1
-                        ? 'Reception (Tier 1)'
+                        ? 'Reception (Level 1)'
                         : vocabState.currentTier === 8
-                          ? 'Beyond KS3 (Tier 8)'
-                          : `Year ${vocabState.currentTier - 1} (Tier ${vocabState.currentTier})`
+                          ? 'Beyond KS3 (Level 8)'
+                          : `Year ${vocabState.currentTier - 1} (Level ${vocabState.currentTier})`
                       }
                     </div>
                     <p style={{ fontSize: '0.92rem', color: 'var(--clr-text-soft)', marginBottom: '32px' }}>
-                      All foundational vocabulary tiers below this have been automatically certified.
+                      All foundational vocabulary levels below this have been automatically certified.
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <div style={{ fontSize: '3.5rem', marginBottom: '16px' }}>
-                      {passed ? '🎉' : '⏳'}
+                    <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+                      {passed ? (
+                        <TrophyIconBig />
+                      ) : (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e67e22" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '16px' }}>
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                      )}
                     </div>
                     <h4 style={{
                       fontSize: '1.6rem',
@@ -1601,196 +2040,179 @@ export default function VocabExplorer() {
       )}
 
       {/* 5. TIER DASHBOARD MAP */}
-      {vocabState.placementCompleted && !vocabSessionActive && (
+      {!vocabSessionActive && !vocabSessionFinished && !vocabIsLoadingPlacement && (
         <div style={{ marginTop: '20px', animation: 'fadeIn 0.3s ease-out' }}>
-          {/* Pacing Panel Stats */}
+          {/* Header Row */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-            background: 'var(--clr-surface)',
-            border: '1px solid var(--clr-border)',
-            borderRadius: '16px',
-            padding: '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             marginBottom: '24px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            borderBottom: '1px solid var(--clr-border)',
+            paddingBottom: '16px'
           }}>
-            <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              padding: '14px',
-              borderRadius: '12px',
-              border: '1px solid rgba(255,255,255,0.04)'
-            }}>
-              <span style={{
-                fontSize: '0.8rem',
-                color: 'var(--clr-text-soft)',
-                textTransform: 'uppercase',
-                display: 'block',
-                marginBottom: '6px',
-                letterSpacing: '0.05em'
-              }}>
-                Words Mastered
-              </span>
-              <strong style={{ fontSize: '1.6rem', color: 'var(--clr-accent)', fontFamily: 'var(--font-display)' }}>
-                {Object.values(vocabState.wordStates).filter(ws => ws.status === 'mastered' || ws.status === 'consolidated').length} <span style={{ fontSize: '1rem', color: 'var(--clr-text-soft)', fontWeight: 'normal' }}>/ 80</span>
-              </strong>
-            </div>
-            <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              padding: '14px',
-              borderRadius: '12px',
-              border: '1px solid rgba(255,255,255,0.04)'
-            }}>
-              <span style={{
-                fontSize: '0.8rem',
-                color: 'var(--clr-text-soft)',
-                textTransform: 'uppercase',
-                display: 'block',
-                marginBottom: '6px',
-                letterSpacing: '0.05em'
-              }}>
-                Estimated Pacing Time
-              </span>
-              <span style={{ fontSize: '1.05rem', fontWeight: '600', color: 'var(--clr-text)' }}>
-                {(() => {
-                  const remainingCount = 80 - Object.values(vocabState.wordStates).filter(ws => ws.status === 'mastered' || ws.status === 'consolidated').length;
-                  const estMinutes = remainingCount * 3.5;
-                  if (remainingCount === 0) return '🏆 Certified Complete!';
-                  return `~${Math.ceil(estMinutes / 60)} hours left`;
-                })()}
-              </span>
-            </div>
-          </div>
-
-          {/* Tier Map list */}
-          <h4 style={{
-            fontSize: '0.85rem',
-            fontWeight: '700',
-            color: 'var(--clr-text-soft)',
-            textTransform: 'uppercase',
-            marginBottom: '16px',
-            letterSpacing: '0.08em'
-          }}>
-            Grade Band Progression Map
-          </h4>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '32px' }}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map(tierNum => {
-              const isCurrent = vocabState.currentTier === tierNum;
-              const status = vocabState.tierStates[String(tierNum)] || 'locked';
-              const isCertified = status === 'certified';
-              
-              let tierLabel = '';
-              if (tierNum === 1) tierLabel = 'Reception (Tier 1)';
-              else if (tierNum === 8) tierLabel = 'Beyond KS3 Extension (Tier 8)';
-              else tierLabel = `Year ${tierNum - 1} (Tier ${tierNum})`;
-
-              let color = 'rgba(255,255,255,0.35)';
-              let bg = 'rgba(255,255,255,0.01)';
-              let border = '1px solid rgba(255,255,255,0.04)';
-              
-              if (isCurrent) {
-                color = 'var(--clr-text)';
-                bg = 'rgba(232, 134, 74, 0.06)';
-                border = '1px solid rgba(232, 134, 74, 0.4)';
-              } else if (isCertified) {
-                color = 'var(--clr-text)';
-                bg = 'rgba(92, 184, 122, 0.04)';
-                border = '1px solid rgba(92, 184, 122, 0.25)';
-              }
-
-              return (
-                <div
-                  key={tierNum}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '14px 20px',
-                    borderRadius: '16px',
-                    background: bg,
-                    border,
-                    color,
-                    fontSize: '0.98rem',
-                    boxShadow: isCurrent ? '0 4px 15px rgba(0,0,0,0.15)' : 'none',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    {isCertified ? (
-                      <span style={{
-                        width: '24px',
-                        height: '24px',
-                        background: 'rgba(92, 184, 122, 0.15)',
-                        color: 'var(--clr-correct)',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.9rem'
-                      }}>
-                        ✓
-                      </span>
-                    ) : isCurrent ? (
-                      <span style={{
-                        width: '24px',
-                        height: '24px',
-                        background: 'rgba(232, 134, 74, 0.2)',
-                        color: 'var(--clr-accent)',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.9rem',
-                        animation: 'pulse 1.8s infinite'
-                      }}>
-                        🎯
-                      </span>
-                    ) : (
-                      <span style={{
-                        width: '24px',
-                        height: '24px',
-                        background: 'rgba(255,255,255,0.03)',
-                        color: 'rgba(255,255,255,0.2)',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.8rem'
-                      }}>
-                        🔒
-                      </span>
-                    )}
-                    <span style={{ fontWeight: isCurrent ? '600' : '500' }}>{tierLabel}</span>
-                  </div>
-                  
-                  {isCurrent && (
-                    <span style={{
-                      fontSize: '0.8rem',
-                      color: 'var(--clr-accent)',
-                      fontWeight: '600',
-                      background: 'rgba(232, 134, 74, 0.1)',
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.02em'
-                    }}>
-                      {vocabState.failedLevelIndex !== null
-                        ? 'Reteach Challenge'
-                        : vocabState.currentLevelIndex === 7
-                          ? 'Final Mastery Exam'
-                          : `Level ${vocabState.currentLevelIndex} / 6`
+            <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: 'var(--clr-text)' }}>
+              Vocabulary Progression
+            </h3>
+            <button
+              onClick={() => {
+                if (vocabState.placementCompleted) {
+                    setConfirmModal({
+                      title: 'Reset Progress?',
+                      message: 'Retaking the placement test will reset your current level progress. This cannot be undone.',
+                      onConfirm: () => {
+                        setConfirmModal(null);
+                        setVocabIsLoadingPlacement(true);
                       }
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                    });
+                    return;
+                  }
+                setVocabIsLoadingPlacement(true);
+              }}
+              style={{
+                border: '1px solid var(--clr-accent)',
+                color: 'var(--clr-accent)',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                background: 'rgba(232, 134, 74, 0.03)'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(232, 134, 74, 0.08)';
+                e.currentTarget.style.filter = 'brightness(1.1)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(232, 134, 74, 0.03)';
+                e.currentTarget.style.filter = 'brightness(1)';
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>Test Your Might <SwordsIcon /></span>
+            </button>
           </div>
 
-          {/* Primary Continue Button */}
+          {/* Stats Row or Calibration Help Banner */}
+          {vocabState.placementCompleted ? (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '16px',
+              background: 'var(--clr-surface)',
+              border: '1px solid var(--clr-border)',
+              borderRadius: '16px',
+              padding: '20px',
+              marginBottom: '24px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            }}>
+              <div style={{
+                background: 'rgba(255,255,255,0.02)',
+                padding: '14px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.04)'
+              }}>
+                <span style={{
+                  fontSize: '0.8rem',
+                  color: 'var(--clr-text-soft)',
+                  textTransform: 'uppercase',
+                  display: 'block',
+                  marginBottom: '6px',
+                  letterSpacing: '0.05em'
+                }}>
+                  Words Mastered
+                </span>
+                <strong style={{ fontSize: '1.6rem', color: 'var(--clr-accent)', fontFamily: 'var(--font-display)' }}>
+                  {Object.values(vocabState.wordStates).filter(ws => ws.status === 'mastered' || ws.status === 'consolidated').length} <span style={{ fontSize: '1rem', color: 'var(--clr-text-soft)', fontWeight: 'normal' }}>/ 80</span>
+                </strong>
+              </div>
+              <div style={{
+                background: 'rgba(255,255,255,0.02)',
+                padding: '14px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.04)'
+              }}>
+                <span style={{
+                  fontSize: '0.8rem',
+                  color: 'var(--clr-text-soft)',
+                  textTransform: 'uppercase',
+                  display: 'block',
+                  marginBottom: '6px',
+                  letterSpacing: '0.05em'
+                }}>
+                  Estimated Pacing Time
+                </span>
+                <span style={{ fontSize: '1.05rem', fontWeight: '600', color: 'var(--clr-text)' }}>
+                  {(() => {
+                    const remainingCount = 80 - Object.values(vocabState.wordStates).filter(ws => ws.status === 'mastered' || ws.status === 'consolidated').length;
+                    const estMinutes = remainingCount * 3.5;
+                    if (remainingCount === 0) return '🏆 Certified Complete!';
+                    return `~${Math.ceil(estMinutes / 60)} hours left`;
+                  })()}
+                </span>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Grid Division Map */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', marginBottom: '32px' }}>
+            
+            {/* Section 1: Reception */}
+            <div>
+              <h4 style={{
+                fontSize: '0.85rem',
+                fontWeight: '700',
+                color: 'var(--clr-text-soft)',
+                textTransform: 'uppercase',
+                marginBottom: '12px',
+                letterSpacing: '0.08em'
+              }}>
+                Reception
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+                {renderTierCard(1)}
+              </div>
+            </div>
+
+            {/* Section 2: Year-by-Year */}
+            <div>
+              <h4 style={{
+                fontSize: '0.85rem',
+                fontWeight: '700',
+                color: 'var(--clr-text-soft)',
+                textTransform: 'uppercase',
+                marginBottom: '12px',
+                letterSpacing: '0.08em'
+              }}>
+                Year-by-Year (KS1 & KS2)
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+                {[2, 3, 4, 5, 6, 7].map(tierNum => renderTierCard(tierNum))}
+              </div>
+            </div>
+
+            {/* Section 3: Beyond */}
+            <div>
+              <h4 style={{
+                fontSize: '0.85rem',
+                fontWeight: '700',
+                color: 'var(--clr-text-soft)',
+                textTransform: 'uppercase',
+                marginBottom: '12px',
+                letterSpacing: '0.08em'
+              }}>
+                Beyond
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+                {renderTierCard(8)}
+              </div>
+            </div>
+            
+          </div>
+
+          {/* Primary Continue Button (Removed per user request — clicking card directly starts session) */}
           <div style={{ textAlign: 'center' }}>
-            {vocabState.mastered ? (
+            {vocabState.mastered && (
               <div style={{
                 padding: '24px',
                 background: 'rgba(92, 184, 122, 0.08)',
@@ -1807,40 +2229,11 @@ export default function VocabExplorer() {
                   Congratulations! You have completed the entire math vocabulary checklist and passed the final cumulative exam.
                 </p>
               </div>
-            ) : (
-              <button
-                onClick={() => startVocabSession()}
-                className="submit-btn"
-                style={{
-                  width: '100%',
-                  maxWidth: '320px',
-                  padding: '14px 32px',
-                  background: 'var(--clr-accent)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  fontSize: '1.05rem',
-                  boxShadow: '0 4px 15px rgba(232, 134, 74, 0.3)',
-                  transition: 'transform 0.15s ease'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)'; }}
-                onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
-              >
-                {vocabState.failedLevelIndex !== null
-                  ? 'Start Reteach Challenge 🚀'
-                  : vocabState.currentLevelIndex === 7
-                    ? 'Start Final Mastery Exam 🏆'
-                    : vocabState.currentLevelIndex === 1 || vocabState.currentLevelIndex === 3
-                      ? `Start Teach & Try (Tier ${vocabState.currentTier})`
-                      : `Start Quiz (Tier ${vocabState.currentTier} Level ${vocabState.currentLevelIndex})`
-                }
-              </button>
             )}
           </div>
         </div>
       )}
     </div>
+    </>
   );
 }
