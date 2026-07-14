@@ -1992,6 +1992,7 @@ function MiniGraph({ story, equation }) {
 }
 
 function generateMqExplanation(q) {
+  try {
   const d = q.data || {};
   const s = [];
   const t = q.type || '';
@@ -2205,6 +2206,9 @@ function generateMqExplanation(q) {
   else if (t === 'm23_3planes') { step('Concept', `Each equation removes 1 dimension.`); step('Answer', `${ans}`); }
   else { _genericExplanation(t, d, s, step, ans); }
   return s;
+  } catch {
+    return [{ label: 'Answer', text: q.display || q.answer || 'See answer above' }];
+  }
 }
 
 function _genericExplanation(t, d, s, step, ans) {
