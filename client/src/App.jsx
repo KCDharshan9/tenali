@@ -41071,6 +41071,7 @@ function TenthApp({ onBack }) {
   )
 }
 
+
 const isStage3Completed = (topicKey, completedTopics) => {
   if (!completedTopics || !Array.isArray(completedTopics)) return false;
   if (completedTopics.includes(topicKey)) return true;
@@ -42210,6 +42211,22 @@ function BalanceScaleApp({ onBack }) {
   )
 }
 
+
+
+
+/**
+ * PercentPage — stable named wrapper so React never unmounts PercentExplanationApp
+ * on theme-toggle re-renders.
+ *
+ * IMPORTANT: this MUST live outside function App() so its reference never
+ * changes between renders.  If it were defined inside App() as an inline
+ * arrow function (even as a modeMap entry), every theme-state update would
+ * produce a new function reference, causing React to tear down and reinitialize
+ * the entire component tree — wiping activeSection, quiz progress, XP, etc.
+ */
+function PercentPage(props) {
+  return <PercentExplanationApp {...props} PercentApp={PercentApp} />;
+}
 
 function App() {
   // Currently selected quiz mode (null = home menu, or key like 'gk', 'addition', etc.)
@@ -43903,7 +43920,7 @@ function App() {
     indices: IndicesApp,           // Indices (laws of exponents)
     sequences: SequencesApp,       // Sequences & Series
     ratio: RatioApp,               // Ratio & Proportion
-    percent: (props) => <PercentExplanationApp {...props} PercentApp={PercentApp} />,           // Percentages
+    percent: PercentPage,                                                      // Percentages
     sets: SetsApp,                 // Sets & Venn diagrams
     trig: TrigApp,                 // Trigonometry
     ineq: IneqApp,                 // Inequalities
