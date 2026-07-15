@@ -104,7 +104,13 @@ export default function ProfilePicker() {
             // No "Cancel" available on first launch — there is nothing to
             // cancel back to. The modal closes only via Create or Esc.
             onClose={null}
-            onSubmit={(name, avatarId) => createProfile(name, avatarId)}
+            onSubmit={(name, avatarId) => {
+              const res = createProfile(name, avatarId)
+              if (res && res.ok) {
+                setUserOpenedCreate(false)
+              }
+              return res
+            }}
           />
         )}
       </div>
