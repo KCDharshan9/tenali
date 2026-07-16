@@ -33,7 +33,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import './App.css'
 import { ProfilesProvider, useProfiles } from './hooks/useProfiles.jsx'
 import { useAdaptiveScore } from './hooks/useAdaptiveScore.js'
-import ProfilePicker from './components/ProfilePicker.jsx'
+import AppGate from './components/AppGate.jsx'
 import ProfileSwitcher from './components/ProfileSwitcher.jsx'
 import ProfileAvatar from './components/ProfileAvatar.jsx'
 
@@ -35497,6 +35497,7 @@ function TenthApp({ onBack }) {
 }
 
 function App() {
+  const { activeProfileId } = useProfiles()
   // Currently selected quiz mode (null = home menu, or key like 'gk', 'addition', etc.)
   const [mode, setMode] = useState(null)
 
@@ -36090,93 +36091,25 @@ function App() {
   // Get the component to render (or null if mode not set)
   const ActiveApp = mode ? modeMap[mode] : null
 
-  // The picker gate lives inside AppGate, which is rendered as a child of
-  // <ProfilesProvider> from main.jsx (so useProfiles() is in scope for both
-  // AppGate and the externally-rendered <AuthMenu />). The provider wraps
-  // the entire app root in main.jsx so the same profiles context is shared
-  // by the home shell and the hamburger menu, regardless of whether the
-  // user is on the home flow or a pathname route.
+  // The picker gate wraps the app content and intercepts rendering if there is no active profile.
   return (
-    <AppGate
-      mode={mode}
-      setMode={setMode}
-      theme={theme}
-      toggleTheme={toggleTheme}
-      ActiveApp={ActiveApp}
-    />
-  )
-}
-
-/**
- * AppGate — owns the picker gate. Renders the full-screen "Who's Studying?"
- * screen when no profile is active, otherwise renders the normal app
- * shell. Must be a child of <ProfilesProvider> (mounted in main.jsx).
- *
- * Behavior:
- *   - 0 profiles → welcome screen inside picker.
- *   - ≥1 profile, no activeProfileId yet (corrupt storage or cleared
- *     active pointer only) → picker shows.
- *   - activeProfileId set → home shell.
- *
- * `activeProfileId` is persisted in localStorage and synced across tabs
- * via the `storage` event. On every page load it is read back, so
- * refresh / new-tab / cross-tab all land on the same active learner.
- *
- * Also tracks profile-switch transitions: when activeProfileId changes
- * mid-session, fires a brief full-screen glow overlay.
- */
-function AppGate({ mode, setMode, theme, toggleTheme, ActiveApp }) {
-  const { ready, activeProfileId } = useProfiles()
-  const prevProfileIdRef = useRef(activeProfileId)
-  const [pulseKey, setPulseKey] = useState(0)
-
-  // Detect actual mid-session profile changes and fire the glow pulse.
-  // First mount does NOT trigger glow (prevProfileIdRef.current starts
-  // null and the first assignment is from null → id).
-  useEffect(() => {
-    if (!ready) return
-    if (prevProfileIdRef.current && prevProfileIdRef.current !== activeProfileId) {
-      setPulseKey((k) => k + 1)
-    }
-    prevProfileIdRef.current = activeProfileId
-  }, [ready, activeProfileId])
-
-  if (!ready) return null
-
-  if (!activeProfileId) {
-    return (
-      <div className="app-shell app-shell--gate">
-        <ProfilePicker />
+    <AppGate>
+      <div className="app-shell">
+        <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <div className="card">
+          {!mode ? (
+            <Home onSelect={setMode} />
+          ) : ActiveApp ? (
+            <ActiveApp key={`${activeProfileId}-${mode}`} onBack={() => setMode(null)} />
+          ) : (
+            <Home onSelect={setMode} />
+          )}
+        </div>
       </div>
-    )
-  }
-
-  return (
-    <div className="app-shell">
-      <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-        {theme === 'dark' ? '☀️' : '🌙'}
-      </button>
-      <div className="card">
-        {!mode ? (
-          <Home onSelect={setMode} />
-        ) : ActiveApp ? (
-          <ActiveApp key={`${activeProfileId}-${mode}`} onBack={() => setMode(null)} />
-        ) : (
-          <Home onSelect={setMode} />
-        )}
-      </div>
-      {pulseKey > 0 && <ProfileSwitchPulse key={pulseKey} />}
-    </div>
+    </AppGate>
   )
-}
-
-/**
- * ProfileSwitchPulse — full-screen accent glow that fires on profile
- * change. Mounts → CSS keyframe runs once → unmounts. Re-mounting with
- * a new key restarts the animation.
- */
-function ProfileSwitchPulse() {
-  return <div className="profile-switch-overlay profile-switch-overlay--on" aria-hidden="true" />
 }
 
 /**

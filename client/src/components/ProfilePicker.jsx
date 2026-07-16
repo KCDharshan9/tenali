@@ -85,7 +85,7 @@ export default function ProfilePicker() {
     return (
       <div className="profile-picker-screen" role="dialog" aria-modal="true" aria-label="Welcome">
         <div className="profile-welcome">
-          <div className="profile-welcome-emoji" aria-hidden="true">📚</div>
+          <img src="/tenali.png" alt="Tenali Logo" className="profile-welcome-logo" />
           <h1 className="profile-welcome-title">Welcome to Tenali</h1>
           <p className="profile-welcome-text">
             Pick your avatar and name to start learning.
