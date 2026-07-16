@@ -30,11 +30,12 @@
 // main.jsx is the entry point — Fast Refresh's "exports" rule doesn't
 // apply here because there's nothing to refresh.
 
-import React from 'react'
+import React from 'react'; window.React = React;
 import ReactDOM from 'react-dom/client'
-import App, { AuthMenu, useAuth } from './App'
+import App, { AuthMenu, useAuth } from './App.jsx?v=2'
 import { ProfilesProvider } from './hooks/useProfiles.jsx'
 import './index.css'
+import './kid-zone.css'
 
 function Root() {
   const { user } = useAuth()
